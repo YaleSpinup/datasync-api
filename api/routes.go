@@ -23,8 +23,16 @@ import (
 )
 
 func (s *server) routes() {
-	api := s.router.PathPrefix("/v1/test").Subrouter()
+	api := s.router.PathPrefix("/v1/datasync").Subrouter()
+
 	api.HandleFunc("/ping", s.PingHandler).Methods(http.MethodGet)
 	api.HandleFunc("/version", s.VersionHandler).Methods(http.MethodGet)
 	api.Handle("/metrics", promhttp.Handler()).Methods(http.MethodGet)
+
+	// api.HandleFunc("/{account}/movers", s.MoverListHandler).Methods(http.MethodGet)
+	// api.HandleFunc("/{account}/movers/{group}", s.MoverListHandler).Methods(http.MethodGet)
+	// api.HandleFunc("/{account}/movers/{group}", s.MoverCreateHandler).Methods(http.MethodPost)
+	// api.HandleFunc("/{account}/movers/{group}/{id}", s.MoverShowHandler).Methods(http.MethodGet)
+	// api.HandleFunc("/{account}/movers/{group}/{id}", s.MoverDeleteHandler).Methods(http.MethodDelete)
+	// api.HandleFunc("/{account}/movers/{group}/{id}", s.MoverUpdateHandler).Methods(http.MethodPut)
 }

@@ -1,6 +1,6 @@
 # datasync-api
 
-This API provides simple restful API access to a service.
+This API provides simple restful API access to the AWS DataSync service.
 
 ## Endpoints
 
@@ -12,7 +12,7 @@ GET /v1/test/metrics
 
 ## Authentication
 
-Authentication is accomplished via an encrypted pre-shared key passed via the `X-Auth-Token` header.
+Authentication is accomplished via an encrypted pre-shared key in the `X-Auth-Token` header.
 
 ## License
 

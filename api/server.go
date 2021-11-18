@@ -177,21 +177,28 @@ type stop struct {
 	error
 }
 
-// retry is stolen from https://upgear.io/blog/simple-golang-retry-function/
-func retry(attempts int, sleep time.Duration, f func() error) error {
+// retry was originally borrowed from https://upgear.io/blog/simple-golang-retry-function/
+// it will retry the given code _f_ for the specified number of _attempts_
+// sleeping after each attempt, starting with _sleep_ time and doubling it
+// for the first _doubling_ times, then keeping it constant (+ jitter)
+func retry(attempts int, doubling int, sleep time.Duration, f func() error) error {
 	if err := f(); err != nil {
 		if s, ok := err.(stop); ok {
-			// Return the original error for later checking
+			// return the original error for later checking
 			return s.error
 		}
 
 		if attempts--; attempts > 0 {
-			// Add some randomness to prevent creating a Thundering Herd
+			// add some randomness to prevent creating a Thundering Herd
 			jitter := time.Duration(rand.Int63n(int64(sleep)))
 			sleep = sleep + jitter/2
 
 			time.Sleep(sleep)
-			return retry(attempts, 2*sleep, f)
+			if doubling--; doubling > 0 {
+				return retry(attempts, doubling, 2*sleep, f)
+			}
+			// stop doubling the sleep interval after some point to prevent it from getting too big
+			return retry(attempts, 0, sleep, f)
 		}
 		return err
 	}
