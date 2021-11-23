@@ -53,13 +53,13 @@ func TestRollback(t *testing.T) {
 }
 
 func TestRetry(t *testing.T) {
-	if err := retry(3, 1*time.Millisecond, func() error {
+	if err := retry(3, 2, 1*time.Millisecond, func() error {
 		return errors.New("boom")
 	}); err == nil {
 		t.Error("expected error when exceeding retry attempts, got nil")
 	}
 
-	if err := retry(3, 1*time.Millisecond, func() error {
+	if err := retry(3, 2, 1*time.Millisecond, func() error {
 		return nil
 	}); err != nil {
 		t.Errorf("unexpected error for successful retry, got %s", err)
@@ -75,7 +75,7 @@ func TestRetry(t *testing.T) {
 		return fmt.Errorf("too small %d", tr)
 	}
 
-	if err := retry(3, 1*time.Millisecond, f); err != nil {
+	if err := retry(3, 2, 1*time.Millisecond, f); err != nil {
 		t.Errorf("unexpected error for successful retry, got %s", err)
 	}
 }
