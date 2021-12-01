@@ -53,7 +53,7 @@ func (s *server) VersionHandler(w http.ResponseWriter, r *http.Request) {
 
 // handleError handles standard apierror return codes
 func handleError(w http.ResponseWriter, err error) {
-	log.Error(err.Error())
+	log.Error(err)
 	if aerr, ok := errors.Cause(err).(apierror.Error); ok {
 		switch aerr.Code {
 		case apierror.ErrForbidden:
