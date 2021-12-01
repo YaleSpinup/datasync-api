@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/YaleSpinup/apierror v0.1.0
-	github.com/aws/aws-sdk-go v1.42.7
+	github.com/aws/aws-sdk-go v1.42.16
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
@@ -25,6 +25,6 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
-	golang.org/x/sys v0.0.0-20211117180635-dee7805ff2e1 // indirect
+	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 )

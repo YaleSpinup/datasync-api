@@ -38,7 +38,8 @@ GET `/v1/datasync/{account}/movers`
     "task-0ee229c003ef4f0b8",
     "task-06c39db367408c721"
     "task-00261ad4da6768578"
-]```
+]
+```
 
 ### List Data Movers by group id
 
