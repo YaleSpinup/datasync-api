@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 
+	"github.com/YaleSpinup/aws-go/services/resourcegroupstaggingapi"
 	"github.com/YaleSpinup/datasync-api/datasync"
-	"github.com/YaleSpinup/datasync-api/resourcegroupstaggingapi"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -13,7 +13,7 @@ type datasyncOrchestrator struct {
 	server         *server
 	sp             *sessionParams
 	datasyncClient datasync.Datasync
-	rgClient       *resourcegroupstaggingapi.ResourceGroupsTaggingAPI
+	rgClient       resourcegroupstaggingapi.ResourceGroupsTaggingAPI
 }
 
 // sessionParams stores all required parameters to initialize the connection session

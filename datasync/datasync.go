@@ -65,7 +65,7 @@ func WithDefaultKMSKeyId(keyId string) DatasyncOption {
 // ListDatasyncLocations lists all datasync locations
 // returns a map of Location ARNs to Location Types (s3, efs, smb, nfs)
 func (d *Datasync) ListDatasyncLocations(ctx context.Context) (map[string]string, error) {
-	log.Debug("listing datasync locations")
+	log.Info("listing datasync locations")
 
 	filters := []*datasync.LocationFilter{}
 
@@ -90,7 +90,7 @@ func (d *Datasync) ListDatasyncLocations(ctx context.Context) (map[string]string
 
 // ListDatasyncTasks lists all datasync tasks
 func (d *Datasync) ListDatasyncTasks(ctx context.Context) ([]string, error) {
-	log.Debug("listing datasync tasks")
+	log.Info("listing datasync tasks")
 
 	filters := []*datasync.TaskFilter{}
 
@@ -118,7 +118,7 @@ func (d *Datasync) DescribeDatasyncTask(ctx context.Context, tArn string) (*data
 		return nil, apierror.New(apierror.ErrBadRequest, "invalid task arn", nil)
 	}
 
-	log.Debugf("describing datasync task %s", tArn)
+	log.Infof("describing datasync task %s", tArn)
 
 	out, err := d.Service.DescribeTaskWithContext(ctx, &datasync.DescribeTaskInput{
 		TaskArn: aws.String(tArn),
@@ -126,6 +126,8 @@ func (d *Datasync) DescribeDatasyncTask(ctx context.Context, tArn string) (*data
 	if err != nil {
 		return nil, ErrCode("failed to describe task", err)
 	}
+
+	log.Debugf("describing datasync task output: %+v", out)
 
 	return out, nil
 }
@@ -136,7 +138,7 @@ func (d *Datasync) DescribeDatasyncLocationS3(ctx context.Context, lArn string) 
 		return nil, apierror.New(apierror.ErrBadRequest, "invalid location arn", nil)
 	}
 
-	log.Debugf("describing datasync location (S3) %s", lArn)
+	log.Infof("describing datasync location (S3) %s", lArn)
 
 	out, err := d.Service.DescribeLocationS3WithContext(ctx, &datasync.DescribeLocationS3Input{
 		LocationArn: aws.String(lArn),
@@ -144,6 +146,8 @@ func (d *Datasync) DescribeDatasyncLocationS3(ctx context.Context, lArn string) 
 	if err != nil {
 		return nil, ErrCode("failed to describe location", err)
 	}
+
+	log.Debugf("describing datasync S3 location output: %+v", out)
 
 	return out, nil
 }
@@ -154,7 +158,7 @@ func (d *Datasync) DescribeDatasyncLocationEfs(ctx context.Context, lArn string)
 		return nil, apierror.New(apierror.ErrBadRequest, "invalid location arn", nil)
 	}
 
-	log.Debugf("describing datasync location (EFS) %s", lArn)
+	log.Infof("describing datasync location (EFS) %s", lArn)
 
 	out, err := d.Service.DescribeLocationEfsWithContext(ctx, &datasync.DescribeLocationEfsInput{
 		LocationArn: aws.String(lArn),
@@ -162,6 +166,8 @@ func (d *Datasync) DescribeDatasyncLocationEfs(ctx context.Context, lArn string)
 	if err != nil {
 		return nil, ErrCode("failed to describe location", err)
 	}
+
+	log.Debugf("describing datasync EFS location output: %+v", out)
 
 	return out, nil
 }
@@ -172,7 +178,7 @@ func (d *Datasync) DescribeDatasyncLocationNfs(ctx context.Context, lArn string)
 		return nil, apierror.New(apierror.ErrBadRequest, "invalid location arn", nil)
 	}
 
-	log.Debugf("describing datasync location (NFS) %s", lArn)
+	log.Infof("describing datasync location (NFS) %s", lArn)
 
 	out, err := d.Service.DescribeLocationNfsWithContext(ctx, &datasync.DescribeLocationNfsInput{
 		LocationArn: aws.String(lArn),
@@ -180,6 +186,8 @@ func (d *Datasync) DescribeDatasyncLocationNfs(ctx context.Context, lArn string)
 	if err != nil {
 		return nil, ErrCode("failed to describe location", err)
 	}
+
+	log.Debugf("describing datasync NFS location output: %+v", out)
 
 	return out, nil
 }
@@ -190,7 +198,7 @@ func (d *Datasync) DescribeDatasyncLocationSmb(ctx context.Context, lArn string)
 		return nil, apierror.New(apierror.ErrBadRequest, "invalid location arn", nil)
 	}
 
-	log.Debugf("describing datasync location (SMB) %s", lArn)
+	log.Infof("describing datasync location (SMB) %s", lArn)
 
 	out, err := d.Service.DescribeLocationSmbWithContext(ctx, &datasync.DescribeLocationSmbInput{
 		LocationArn: aws.String(lArn),
@@ -199,12 +207,18 @@ func (d *Datasync) DescribeDatasyncLocationSmb(ctx context.Context, lArn string)
 		return nil, ErrCode("failed to describe location", err)
 	}
 
+	log.Debugf("describing datasync SMB location output: %+v", out)
+
 	return out, nil
 }
 
 // GetDatasyncTags gets the tags for a documentDB cluster
 func (d *Datasync) GetDatasyncTags(ctx context.Context, tArn string) ([]*datasync.TagListEntry, error) {
-	log.Debugf("getting tags for datasync task %s", tArn)
+	if !arn.IsARN(tArn) {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid location arn", nil)
+	}
+
+	log.Infof("getting tags for datasync task %s", tArn)
 
 	out, err := d.Service.ListTagsForResourceWithContext(ctx, &datasync.ListTagsForResourceInput{
 		ResourceArn: aws.String(tArn),

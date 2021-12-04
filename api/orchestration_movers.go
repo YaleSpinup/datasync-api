@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/YaleSpinup/apierror"
+	"github.com/YaleSpinup/aws-go/services/resourcegroupstaggingapi"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	log "github.com/sirupsen/logrus"
@@ -72,13 +73,33 @@ func (o *datasyncOrchestrator) datamoverDescribe(ctx context.Context, group, id 
 
 // datamoverList lists all data movers (tasks) in a group
 func (o *datasyncOrchestrator) datamoverList(ctx context.Context, group string) ([]string, error) {
+	filters := []*resourcegroupstaggingapi.TagFilter{
+		{
+			Key:   "spinup:org",
+			Value: []string{o.server.org},
+		},
+		{
+			Key:   "spinup:type",
+			Value: []string{"storage"},
+		},
+		{
+			Key:   "spinup:flavor",
+			Value: []string{"datamover"},
+		},
+	}
+
 	if group == "" {
 		log.Debug("listing all data movers")
 	} else {
 		log.Debugf("listing data movers in group %s", group)
+
+		filters = append(filters, &resourcegroupstaggingapi.TagFilter{
+			Key:   "spinup:spaceid",
+			Value: []string{group},
+		})
 	}
 
-	out, err := o.rgClient.GetResourcesInOrg(ctx, o.server.org, "storage", "datamover", group)
+	out, err := o.rgClient.GetResourcesWithTags(ctx, []string{"datasync"}, filters)
 	if err != nil {
 		return nil, err
 	}
@@ -134,6 +155,6 @@ func (o *datasyncOrchestrator) describeDatasyncLocation(ctx context.Context, lTy
 		return &DatamoverLocation{NFS: dstLocationNfs}, nil
 	default:
 		log.Warnf("type %s didn't match any supported location types", lType)
-		return nil, nil
+		return nil, apierror.New(apierror.ErrInternalError, "unknown datasync location type "+lType, nil)
 	}
 }
