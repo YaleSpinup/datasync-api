@@ -2,11 +2,9 @@ module github.com/YaleSpinup/datasync-api
 
 go 1.17
 
-replace github.com/YaleSpinup/aws-go v0.1.0 => ../aws-go
-
 require (
 	github.com/YaleSpinup/apierror v0.1.0
-	github.com/YaleSpinup/aws-go v0.1.0
+	github.com/YaleSpinup/aws-go v0.2.0
 	github.com/YaleSpinup/flywheel v0.3.0
 	github.com/aws/aws-sdk-go v1.42.20
 	github.com/google/uuid v1.3.0
