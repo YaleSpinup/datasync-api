@@ -97,8 +97,9 @@ func Test_tags_inOrg(t *testing.T) {
 
 func Test_tags_normalize(t *testing.T) {
 	type fields struct {
-		org  string
-		tags Tags
+		org   string
+		group string
+		tags  Tags
 	}
 
 	tests := []struct {
@@ -109,13 +110,31 @@ func Test_tags_normalize(t *testing.T) {
 		{
 			name: "test conflicting org",
 			fields: fields{
-				org: "testOrg",
+				org:   "testOrg",
+				group: "testGrp",
 				tags: Tags{
 					{Key: "spinup:org", Value: "XOR"},
 				},
 			},
 			want: Tags{
 				{Key: "spinup:org", Value: "testOrg"},
+				{Key: "spinup:spaceid", Value: "testGrp"},
+				{Key: "spinup:type", Value: "storage"},
+				{Key: "spinup:flavor", Value: "datamover"},
+			},
+		},
+		{
+			name: "test conflicting group",
+			fields: fields{
+				org:   "testOrg",
+				group: "testGrp",
+				tags: Tags{
+					{Key: "spinup:spaceid", Value: "rogue"},
+				},
+			},
+			want: Tags{
+				{Key: "spinup:org", Value: "testOrg"},
+				{Key: "spinup:spaceid", Value: "testGrp"},
 				{Key: "spinup:type", Value: "storage"},
 				{Key: "spinup:flavor", Value: "datamover"},
 			},
@@ -123,13 +142,15 @@ func Test_tags_normalize(t *testing.T) {
 		{
 			name: "test conflicting type",
 			fields: fields{
-				org: "testOrg",
+				org:   "testOrg",
+				group: "testGrp",
 				tags: Tags{
 					{Key: "spinup:type", Value: "container"},
 				},
 			},
 			want: Tags{
 				{Key: "spinup:org", Value: "testOrg"},
+				{Key: "spinup:spaceid", Value: "testGrp"},
 				{Key: "spinup:type", Value: "storage"},
 				{Key: "spinup:flavor", Value: "datamover"},
 			},
@@ -137,13 +158,15 @@ func Test_tags_normalize(t *testing.T) {
 		{
 			name: "test conflicting flavor",
 			fields: fields{
-				org: "testOrg",
+				org:   "testOrg",
+				group: "testGrp",
 				tags: Tags{
 					{Key: "spinup:flavor", Value: "task"},
 				},
 			},
 			want: Tags{
 				{Key: "spinup:org", Value: "testOrg"},
+				{Key: "spinup:spaceid", Value: "testGrp"},
 				{Key: "spinup:type", Value: "storage"},
 				{Key: "spinup:flavor", Value: "datamover"},
 			},
@@ -151,7 +174,8 @@ func Test_tags_normalize(t *testing.T) {
 		{
 			name: "test multiple conflicting tags",
 			fields: fields{
-				org: "testOrg",
+				org:   "testOrg",
+				group: "testGrp",
 				tags: Tags{
 					{Key: "spinup:org", Value: "XOR"},
 					{Key: "spinup:type", Value: "container"},
@@ -160,6 +184,7 @@ func Test_tags_normalize(t *testing.T) {
 			},
 			want: Tags{
 				{Key: "spinup:org", Value: "testOrg"},
+				{Key: "spinup:spaceid", Value: "testGrp"},
 				{Key: "spinup:type", Value: "storage"},
 				{Key: "spinup:flavor", Value: "datamover"},
 			},
@@ -167,7 +192,8 @@ func Test_tags_normalize(t *testing.T) {
 		{
 			name: "test preserving user tags",
 			fields: fields{
-				org: "testOrg",
+				org:   "testOrg",
+				group: "testGrp",
 				tags: Tags{
 					{Key: "CreatedBy", Value: "me"},
 					{Key: "Env", Value: "test"},
@@ -175,6 +201,7 @@ func Test_tags_normalize(t *testing.T) {
 			},
 			want: Tags{
 				{Key: "spinup:org", Value: "testOrg"},
+				{Key: "spinup:spaceid", Value: "testGrp"},
 				{Key: "spinup:type", Value: "storage"},
 				{Key: "spinup:flavor", Value: "datamover"},
 				{Key: "CreatedBy", Value: "me"},
@@ -184,7 +211,8 @@ func Test_tags_normalize(t *testing.T) {
 		{
 			name: "test setting org and preserving user tags",
 			fields: fields{
-				org: "testOrg",
+				org:   "testOrg",
+				group: "testGrp",
 				tags: Tags{
 					{Key: "spinup:org", Value: "Rogue"},
 					{Key: "CreatedBy", Value: "me"},
@@ -193,6 +221,7 @@ func Test_tags_normalize(t *testing.T) {
 			},
 			want: Tags{
 				{Key: "spinup:org", Value: "testOrg"},
+				{Key: "spinup:spaceid", Value: "testGrp"},
 				{Key: "spinup:type", Value: "storage"},
 				{Key: "spinup:flavor", Value: "datamover"},
 				{Key: "CreatedBy", Value: "me"},
@@ -202,11 +231,13 @@ func Test_tags_normalize(t *testing.T) {
 		{
 			name: "test empty tags",
 			fields: fields{
-				org:  "testOrg",
-				tags: Tags{},
+				org:   "testOrg",
+				group: "testGrp",
+				tags:  Tags{},
 			},
 			want: Tags{
 				{Key: "spinup:org", Value: "testOrg"},
+				{Key: "spinup:spaceid", Value: "testGrp"},
 				{Key: "spinup:type", Value: "storage"},
 				{Key: "spinup:flavor", Value: "datamover"},
 			},
@@ -216,7 +247,7 @@ func Test_tags_normalize(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tags := tt.fields.tags
-			got := tags.normalize(tt.fields.org)
+			got := tags.normalize(tt.fields.org, tt.fields.group)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("tags.normalize()\ngot:  %v\nwant: %v", got, tt.want)
 			}

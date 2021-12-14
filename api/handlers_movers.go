@@ -27,6 +27,66 @@ import (
 	"github.com/pkg/errors"
 )
 
+// MoverCreateHandler creates a new Datasync mover
+func (s *server) MoverCreateHandler(w http.ResponseWriter, r *http.Request) {
+	w = LogWriter{w}
+	vars := mux.Vars(r)
+	account := vars["account"]
+	group := vars["group"]
+
+	// read the input against our struct in api/types.go
+	req := DatamoverCreateRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		msg := fmt.Sprintf("cannot decode body into create data mover input: %s", err)
+		handleError(w, apierror.New(apierror.ErrBadRequest, msg, err))
+		return
+	}
+
+	if req.Name == nil {
+		handleError(w, apierror.New(apierror.ErrBadRequest, "Name is a required field", nil))
+		return
+	}
+
+	// TODO: validate Name - should be alphanum + hyphen only
+
+	if req.Source == nil || req.Destination == nil || req.Source.Type == nil || req.Destination.Type == nil {
+		handleError(w, apierror.New(apierror.ErrBadRequest, "Source and Destination are required", nil))
+		return
+	}
+
+	policy, err := s.moverCreatePolicy()
+	if err != nil {
+		handleError(w, apierror.New(apierror.ErrInternalError, "failed to generate policy", err))
+		return
+	}
+
+	orch, err := s.newDatasyncOrchestrator(
+		r.Context(),
+		account,
+		&sessionParams{
+			role: fmt.Sprintf("arn:aws:iam::%s:role/%s", account, s.session.RoleName),
+			policyArns: []string{
+				"arn:aws:iam::aws:policy/AWSDataSyncFullAccess",
+			},
+			inlinePolicy: policy,
+		},
+	)
+	if err != nil {
+		handleError(w, errors.Wrap(err, "unable to create datasync orchestrator"))
+		return
+	}
+
+	task, err := orch.datamoverCreate(r.Context(), group, &req)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Flywheel-Task", task.ID)
+	w.WriteHeader(http.StatusAccepted)
+}
+
 // MoverListHandler lists all of the data movers in a group by id
 func (s *server) MoverListHandler(w http.ResponseWriter, r *http.Request) {
 	w = LogWriter{w}
@@ -52,7 +112,7 @@ func (s *server) MoverListHandler(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := orch.datamoverList(r.Context(), group)
 	if err != nil {
-		handleError(w, errors.Wrap(err, "failed to list data movers"))
+		handleError(w, err)
 		return
 	}
 
@@ -74,7 +134,7 @@ func (s *server) MoverShowHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	account := vars["account"]
 	group := vars["group"]
-	id := vars["id"]
+	name := vars["name"]
 
 	orch, err := s.newDatasyncOrchestrator(
 		r.Context(),
@@ -83,7 +143,7 @@ func (s *server) MoverShowHandler(w http.ResponseWriter, r *http.Request) {
 			role: fmt.Sprintf("arn:aws:iam::%s:role/%s", account, s.session.RoleName),
 			policyArns: []string{
 				"arn:aws:iam::aws:policy/AWSDataSyncReadOnlyAccess",
-				// "arn:aws:iam::aws:policy/ResourceGroupsandTagEditorReadOnlyAccess",
+				"arn:aws:iam::aws:policy/ResourceGroupsandTagEditorReadOnlyAccess",
 			},
 		},
 	)
@@ -92,9 +152,9 @@ func (s *server) MoverShowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := orch.datamoverDescribe(r.Context(), group, id)
+	resp, err := orch.datamoverDescribe(r.Context(), group, name)
 	if err != nil {
-		handleError(w, errors.Wrap(err, "failed to describe data mover"))
+		handleError(w, err)
 		return
 	}
 

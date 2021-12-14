@@ -112,6 +112,92 @@ func (d *Datasync) ListDatasyncTasks(ctx context.Context) ([]string, error) {
 	return tasks, nil
 }
 
+// CreateDatasyncLocationS3 creates S3 datasync location
+func (d *Datasync) CreateDatasyncLocationS3(ctx context.Context, input *datasync.CreateLocationS3Input) (*datasync.CreateLocationS3Output, error) {
+	if input == nil {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
+	log.Infof("creating S3 location for %s", aws.StringValue(input.S3BucketArn))
+
+	out, err := d.Service.CreateLocationS3WithContext(ctx, input)
+	if err != nil {
+		return nil, ErrCode("failed to create location", err)
+	}
+
+	return out, nil
+}
+
+// CreateDatasyncLocationEfs creates Efs datasync location
+func (d *Datasync) CreateDatasyncLocationEfs(ctx context.Context, input *datasync.CreateLocationEfsInput) (*datasync.CreateLocationEfsOutput, error) {
+	if input == nil {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
+	log.Infof("creating Efs location for %s", aws.StringValue(input.EfsFilesystemArn))
+
+	out, err := d.Service.CreateLocationEfsWithContext(ctx, input)
+	if err != nil {
+		return nil, ErrCode("failed to create location", err)
+	}
+
+	return out, nil
+}
+
+// CreateDatasyncTask creates a datasync task
+func (d *Datasync) CreateDatasyncTask(ctx context.Context, input *datasync.CreateTaskInput) (*datasync.CreateTaskOutput, error) {
+	if input == nil {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
+	log.Infof("creating task %s", aws.StringValue(input.Name))
+
+	out, err := d.Service.CreateTaskWithContext(ctx, input)
+	if err != nil {
+		return nil, ErrCode("failed to create task", err)
+	}
+
+	log.Debugf("creating task output: %+v", out)
+
+	return out, nil
+}
+
+// DeleteDatasyncLocation deletes a datasync location
+func (d *Datasync) DeleteDatasyncLocation(ctx context.Context, input *datasync.DeleteLocationInput) (*datasync.DeleteLocationOutput, error) {
+	if input == nil {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
+	log.Infof("deleting location %s", aws.StringValue(input.LocationArn))
+
+	out, err := d.Service.DeleteLocationWithContext(ctx, input)
+	if err != nil {
+		return nil, ErrCode("failed to delete location", err)
+	}
+
+	log.Debugf("deleting location output: %+v", out)
+
+	return out, nil
+}
+
+// DeleteDatasyncTask deletes a datasync task
+func (d *Datasync) DeleteDatasyncTask(ctx context.Context, input *datasync.DeleteTaskInput) (*datasync.DeleteTaskOutput, error) {
+	if input == nil {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
+	log.Infof("deleting task %s", aws.StringValue(input.TaskArn))
+
+	out, err := d.Service.DeleteTaskWithContext(ctx, input)
+	if err != nil {
+		return nil, ErrCode("failed to delete task", err)
+	}
+
+	log.Debugf("deleting task output: %+v", out)
+
+	return out, nil
+}
+
 // DescribeDatasyncTask return details about a datasync task
 func (d *Datasync) DescribeDatasyncTask(ctx context.Context, tArn string) (*datasync.DescribeTaskOutput, error) {
 	if !arn.IsARN(tArn) {

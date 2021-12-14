@@ -7,6 +7,12 @@
     "externalId": "{{ .external_id }}",
     "role": "{{ .cross_account_role }}"
   },
+  "flywheel": {
+    "namespace": "{{ .flywheel_namespace }}",
+    "redisAddress": "{{ .redis_address }}",
+    "redisDatabase": "{{ .redis_database }}",
+    "ttl": "{{ .flywheel_ttl }}"
+  },
   "token": "{{ .api_token }}",
   "logLevel": "{{ .log_level }}",
   "org": "{{ .spinup_org }}"

@@ -28,6 +28,7 @@ import (
 	"github.com/YaleSpinup/datasync-api/common"
 	"github.com/YaleSpinup/datasync-api/iam"
 	"github.com/YaleSpinup/datasync-api/session"
+	"github.com/YaleSpinup/flywheel"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/patrickmn/go-cache"
@@ -55,6 +56,7 @@ type server struct {
 	context      context.Context
 	session      session.Session
 	sessionCache *cache.Cache
+	flywheel     *flywheel.Manager
 	orgPolicy    string
 	org          string
 }
@@ -87,6 +89,12 @@ func NewServer(config common.Config) error {
 		return err
 	}
 	s.orgPolicy = orgPolicy
+
+	manager, err := newFlywheelManager(config.Flywheel)
+	if err != nil {
+		return err
+	}
+	s.flywheel = manager
 
 	// Create a new session used for authentication and assuming cross account roles
 	log.Debugf("Creating new session with key '%s' in region '%s'", config.Account.Akid, config.Account.Region)
