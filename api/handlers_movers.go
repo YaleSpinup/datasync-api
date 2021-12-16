@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 
 	"github.com/YaleSpinup/apierror"
@@ -47,7 +48,12 @@ func (s *server) MoverCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: validate Name - should be alphanum + hyphen only
+	regexName := "^[a-zA-Z0-9-]+$"
+	re := regexp.MustCompile(regexName)
+	if !re.MatchString(*req.Name) {
+		handleError(w, apierror.New(apierror.ErrBadRequest, "Name doesn't match regex "+regexName, nil))
+		return
+	}
 
 	if req.Source == nil || req.Destination == nil || req.Source.Type == nil || req.Destination.Type == nil {
 		handleError(w, apierror.New(apierror.ErrBadRequest, "Source and Destination are required", nil))
