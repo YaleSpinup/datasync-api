@@ -51,10 +51,7 @@ func (o *datasyncOrchestrator) datamoverCreate(ctx context.Context, group string
 		rollBackTasks = append(rollBackTasks, func(ctx context.Context) error {
 			log.Errorf("rollback: deleting source location: %s", srcLocationArn)
 
-			_, err = o.datasyncClient.DeleteDatasyncLocation(ctx, &datasync.DeleteLocationInput{
-				LocationArn: aws.String(srcLocationArn),
-			})
-			if err != nil {
+			if err = o.deleteDatasyncLocation(ctx, aws.StringValue(req.Name), srcLocationArn, req.Source.Type); err != nil {
 				log.Warnf("rollback: error deleting location: %s", err)
 				return err
 			}
@@ -72,10 +69,7 @@ func (o *datasyncOrchestrator) datamoverCreate(ctx context.Context, group string
 		rollBackTasks = append(rollBackTasks, func(ctx context.Context) error {
 			log.Errorf("rollback: deleting destination location: %s", dstLocationArn)
 
-			_, err = o.datasyncClient.DeleteDatasyncLocation(ctx, &datasync.DeleteLocationInput{
-				LocationArn: aws.String(dstLocationArn),
-			})
-			if err != nil {
+			if err = o.deleteDatasyncLocation(ctx, aws.StringValue(req.Name), dstLocationArn, req.Destination.Type); err != nil {
 				log.Warnf("rollback: error deleting location: %s", err)
 				return err
 			}
@@ -113,6 +107,35 @@ func (o *datasyncOrchestrator) datamoverCreate(ctx context.Context, group string
 	}()
 
 	return task, nil
+}
+
+// datamoverDelete deletes a data mover and all of its associated components
+func (o *datasyncOrchestrator) datamoverDelete(ctx context.Context, group, name string) error {
+	log.Infof("deleting data mover %s", name)
+
+	// get information about the datasync task
+	mover, err := o.datamoverDescribe(ctx, group, name)
+	if err != nil {
+		return err
+	}
+
+	// delete task
+	if _, err = o.datasyncClient.DeleteDatasyncTask(ctx, &datasync.DeleteTaskInput{
+		TaskArn: mover.Task.TaskArn,
+	}); err != nil {
+		return err
+	}
+
+	// delete source and destination locations
+	if err = o.deleteDatasyncLocation(ctx, name, aws.StringValue(mover.Task.SourceLocationArn), mover.Source.Type); err != nil {
+		return err
+	}
+
+	if err = o.deleteDatasyncLocation(ctx, name, aws.StringValue(mover.Task.DestinationLocationArn), mover.Destination.Type); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // datamoverDescribe gets details about a specific data mover (task and locations)
@@ -224,31 +247,31 @@ func (o *datasyncOrchestrator) describeDatasyncLocation(ctx context.Context, lTy
 
 	log.Debugf("location %s is type %s", lArn, lType)
 
-	switch strings.ToLower(lType) {
-	case "s3":
+	switch strings.ToUpper(lType) {
+	case S3.String():
 		dstLocationS3, err := o.datasyncClient.DescribeDatasyncLocationS3(ctx, lArn)
 		if err != nil {
 			return nil, err
 		}
-		return &DatamoverLocationOutput{S3: dstLocationS3}, nil
-	case "efs":
+		return &DatamoverLocationOutput{Type: S3, S3: dstLocationS3}, nil
+	case EFS.String():
 		dstLocationEfs, err := o.datasyncClient.DescribeDatasyncLocationEfs(ctx, lArn)
 		if err != nil {
 			return nil, err
 		}
-		return &DatamoverLocationOutput{EFS: dstLocationEfs}, nil
-	case "smb":
+		return &DatamoverLocationOutput{Type: EFS, EFS: dstLocationEfs}, nil
+	case SMB.String():
 		dstLocationSmb, err := o.datasyncClient.DescribeDatasyncLocationSmb(ctx, lArn)
 		if err != nil {
 			return nil, err
 		}
-		return &DatamoverLocationOutput{SMB: dstLocationSmb}, nil
-	case "nfs":
+		return &DatamoverLocationOutput{Type: SMB, SMB: dstLocationSmb}, nil
+	case NFS.String():
 		dstLocationNfs, err := o.datasyncClient.DescribeDatasyncLocationNfs(ctx, lArn)
 		if err != nil {
 			return nil, err
 		}
-		return &DatamoverLocationOutput{NFS: dstLocationNfs}, nil
+		return &DatamoverLocationOutput{Type: NFS, NFS: dstLocationNfs}, nil
 	default:
 		log.Warnf("type %s didn't match any supported location types", lType)
 		return nil, apierror.New(apierror.ErrInternalError, "unknown datasync location type "+lType, nil)
@@ -261,10 +284,10 @@ func (o *datasyncOrchestrator) createDatasyncLocation(ctx context.Context, mover
 		return "", apierror.New(apierror.ErrBadRequest, "invalid input", nil)
 	}
 
-	log.Debugf("data mover %s location type %s", mover, input.Type)
+	log.Debugf("creating data mover %s location type %s", mover, input.Type)
 
-	switch strings.ToLower(input.Type.String()) {
-	case "s3":
+	switch input.Type {
+	case S3:
 		s3Arn, err := arn.Parse(aws.StringValue(input.S3.S3BucketArn))
 		if err != nil {
 			return "", apierror.New(apierror.ErrInternalError, "failed to parse ARN "+aws.StringValue(input.S3.S3BucketArn), err)
@@ -274,7 +297,8 @@ func (o *datasyncOrchestrator) createDatasyncLocation(ctx context.Context, mover
 		// we need to generate that first, before creating the location
 
 		path := fmt.Sprintf("/spinup/%s/%s/", o.server.org, group)
-		roleName := fmt.Sprintf("SpinupDataSyncAccess-%s-%s", mover, s3Arn.Resource)
+		// TODO: the role name is 64 chars max, so we might exceed it
+		roleName := fmt.Sprintf("Spinup-%s-%s", mover, s3Arn.Resource)
 
 		roleARN, err := o.BucketAccessRole(ctx, path, roleName, s3Arn.String(), tags)
 		if err != nil {
@@ -304,6 +328,10 @@ func (o *datasyncOrchestrator) createDatasyncLocation(ctx context.Context, mover
 			return nil
 		}); err != nil {
 			log.Infof("failed to create location, timeout retrying: %s", err.Error())
+
+			// clean up the role we created earlier
+			o.deleteBucketAccessRole(ctx, aws.String(roleARN))
+
 			return "", err
 		}
 
@@ -311,6 +339,43 @@ func (o *datasyncOrchestrator) createDatasyncLocation(ctx context.Context, mover
 	default:
 		log.Warnf("type %s didn't match any supported location types", input.Type)
 		return "", apierror.New(apierror.ErrBadRequest, "invalid location type", nil)
+	}
+}
+
+// deleteDatasyncLocation deletes the specific location type and associated resources
+// func (o *datasyncOrchestrator) deleteDatasyncLocation(ctx context.Context, mover, group string, input *DatamoverLocationOutput) error {
+func (o *datasyncOrchestrator) deleteDatasyncLocation(ctx context.Context, mover, lArn string, lType LocationType) error {
+	if mover == "" || lType == "" || lArn == "" {
+		return apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
+	log.Debugf("deleting data mover %s location type %s", mover, lType)
+
+	l, err := o.describeDatasyncLocation(ctx, lType.String(), lArn)
+	if err != nil {
+		return err
+	}
+
+	switch lType {
+	case S3:
+		if _, err := o.datasyncClient.DeleteDatasyncLocation(ctx, &datasync.DeleteLocationInput{
+			LocationArn: aws.String(lArn),
+		}); err != nil {
+			log.Warnf("error deleting source location %s: %s", lArn, err)
+			return err
+		}
+
+		// clean up bucket access role
+		if l.S3.S3Config != nil {
+			if err := o.deleteBucketAccessRole(ctx, l.S3.S3Config.BucketAccessRoleArn); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	default:
+		log.Warnf("type %s didn't match any supported location types", lType)
+		return apierror.New(apierror.ErrBadRequest, "invalid location type", nil)
 	}
 }
 
