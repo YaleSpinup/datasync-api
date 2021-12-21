@@ -32,6 +32,7 @@ func (o *datasyncOrchestrator) datamoverCreate(ctx context.Context, group string
 		msgChan, errChan := o.startTask(taskCtx, task)
 
 		// setup err var, rollback function list and defer execution
+		// do not shadow err below for rollback to work properly
 		var err error
 		var rollBackTasks []rollbackFunc
 		defer func() {
@@ -41,8 +42,10 @@ func (o *datasyncOrchestrator) datamoverCreate(ctx context.Context, group string
 			}
 		}()
 
+		var srcLocationArn, dstLocationArn string
+
 		msgChan <- "requested creation of source location"
-		srcLocationArn, err := o.createDatasyncLocation(taskCtx, aws.StringValue(req.Name), group, req.Source, req.Tags)
+		srcLocationArn, err = o.createDatasyncLocation(taskCtx, aws.StringValue(req.Name), group, req.Source, req.Tags)
 		if err != nil {
 			errChan <- fmt.Errorf("failed to create source location: %s", err.Error())
 			return
@@ -51,10 +54,9 @@ func (o *datasyncOrchestrator) datamoverCreate(ctx context.Context, group string
 		rollBackTasks = append(rollBackTasks, func(ctx context.Context) error {
 			log.Errorf("rollback: deleting source location: %s", srcLocationArn)
 
-			_, err = o.datasyncClient.DeleteDatasyncLocation(ctx, &datasync.DeleteLocationInput{
+			if _, err := o.datasyncClient.DeleteDatasyncLocation(ctx, &datasync.DeleteLocationInput{
 				LocationArn: aws.String(srcLocationArn),
-			})
-			if err != nil {
+			}); err != nil {
 				log.Warnf("rollback: error deleting location: %s", err)
 				return err
 			}
@@ -63,7 +65,7 @@ func (o *datasyncOrchestrator) datamoverCreate(ctx context.Context, group string
 		})
 
 		msgChan <- "requested creation of destination location"
-		dstLocationArn, err := o.createDatasyncLocation(taskCtx, aws.StringValue(req.Name), group, req.Destination, req.Tags)
+		dstLocationArn, err = o.createDatasyncLocation(taskCtx, aws.StringValue(req.Name), group, req.Destination, req.Tags)
 		if err != nil {
 			errChan <- fmt.Errorf("failed to create destination location: %s", err.Error())
 			return
@@ -72,10 +74,9 @@ func (o *datasyncOrchestrator) datamoverCreate(ctx context.Context, group string
 		rollBackTasks = append(rollBackTasks, func(ctx context.Context) error {
 			log.Errorf("rollback: deleting destination location: %s", dstLocationArn)
 
-			_, err = o.datasyncClient.DeleteDatasyncLocation(ctx, &datasync.DeleteLocationInput{
+			if _, err := o.datasyncClient.DeleteDatasyncLocation(ctx, &datasync.DeleteLocationInput{
 				LocationArn: aws.String(dstLocationArn),
-			})
-			if err != nil {
+			}); err != nil {
 				log.Warnf("rollback: error deleting location: %s", err)
 				return err
 			}
@@ -83,8 +84,10 @@ func (o *datasyncOrchestrator) datamoverCreate(ctx context.Context, group string
 			return nil
 		})
 
+		var t *datasync.CreateTaskOutput
+
 		msgChan <- fmt.Sprintf("requested creation of datasync task %s", aws.StringValue(req.Name))
-		t, err := o.datasyncClient.CreateDatasyncTask(taskCtx, &datasync.CreateTaskInput{
+		t, err = o.datasyncClient.CreateDatasyncTask(taskCtx, &datasync.CreateTaskInput{
 			DestinationLocationArn: aws.String(dstLocationArn),
 			Name:                   req.Name,
 			SourceLocationArn:      aws.String(srcLocationArn),
@@ -261,7 +264,7 @@ func (o *datasyncOrchestrator) createDatasyncLocation(ctx context.Context, mover
 		return "", apierror.New(apierror.ErrBadRequest, "invalid input", nil)
 	}
 
-	log.Debugf("data mover %s location type %s", mover, input.Type)
+	log.Debugf("creating data mover %s location type %s", mover, input.Type)
 
 	switch strings.ToLower(input.Type.String()) {
 	case "s3":
@@ -276,7 +279,7 @@ func (o *datasyncOrchestrator) createDatasyncLocation(ctx context.Context, mover
 		path := fmt.Sprintf("/spinup/%s/%s/", o.server.org, group)
 		roleName := fmt.Sprintf("SpinupDataSyncAccess-%s-%s", mover, s3Arn.Resource)
 
-		roleARN, err := o.BucketAccessRole(ctx, path, roleName, s3Arn.String(), tags)
+		roleARN, err := o.bucketAccessRole(ctx, path, roleName, s3Arn.String(), tags)
 		if err != nil {
 			return "", err
 		}
@@ -358,7 +361,7 @@ func (o *datasyncOrchestrator) taskDetailsFromName(ctx context.Context, group, n
 	}
 
 	// get a list of all datasync resources in the group
-	out, err := o.rgClient.GetResourcesWithTags(ctx, []string{"datasync"}, filters)
+	out, err := o.rgClient.GetResourcesWithTags(ctx, []string{"datasync:task"}, filters)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -368,26 +371,13 @@ func (o *datasyncOrchestrator) taskDetailsFromName(ctx context.Context, group, n
 	}
 
 	for _, r := range out {
-		a, err := arn.Parse(aws.StringValue(r.ResourceARN))
+		task, err := o.datasyncClient.DescribeDatasyncTask(ctx, aws.StringValue(r.ResourceARN))
 		if err != nil {
-			return nil, nil, apierror.New(apierror.ErrInternalError, "failed to parse ARN "+aws.StringValue(r.ResourceARN), err)
+			return nil, nil, err
 		}
 
-		parts := strings.SplitN(a.Resource, "/", 2)
-		if len(parts) < 2 {
-			return nil, nil, apierror.New(apierror.ErrInternalError, "failed to parse ARN "+aws.StringValue(r.ResourceARN), err)
-		}
-
-		// we get both tasks and locations back, and we only care about tasks
-		if parts[0] == "task" {
-			task, err := o.datasyncClient.DescribeDatasyncTask(ctx, aws.StringValue(r.ResourceARN))
-			if err != nil {
-				return nil, nil, err
-			}
-
-			if aws.StringValue(task.Name) == name {
-				return task, fromResourcegroupstaggingapiTags(r.Tags), nil
-			}
+		if aws.StringValue(task.Name) == name {
+			return task, fromResourcegroupstaggingapiTags(r.Tags), nil
 		}
 	}
 
