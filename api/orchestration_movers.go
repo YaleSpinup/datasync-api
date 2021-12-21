@@ -54,7 +54,7 @@ func (o *datasyncOrchestrator) datamoverCreate(ctx context.Context, group string
 		rollBackTasks = append(rollBackTasks, func(ctx context.Context) error {
 			log.Errorf("rollback: deleting source location: %s", srcLocationArn)
 
-      if err := o.deleteDatasyncLocation(ctx, aws.StringValue(req.Name), srcLocationArn, req.Source.Type); err != nil {
+			if err := o.deleteDatasyncLocation(ctx, aws.StringValue(req.Name), srcLocationArn, req.Source.Type); err != nil {
 				log.Warnf("rollback: error deleting location: %s", err)
 				return err
 			}
@@ -72,7 +72,7 @@ func (o *datasyncOrchestrator) datamoverCreate(ctx context.Context, group string
 		rollBackTasks = append(rollBackTasks, func(ctx context.Context) error {
 			log.Errorf("rollback: deleting destination location: %s", dstLocationArn)
 
-      if err := o.deleteDatasyncLocation(ctx, aws.StringValue(req.Name), dstLocationArn, req.Destination.Type); err != nil {
+			if err := o.deleteDatasyncLocation(ctx, aws.StringValue(req.Name), dstLocationArn, req.Destination.Type); err != nil {
 				log.Warnf("rollback: error deleting location: %s", err)
 				return err
 			}
@@ -125,18 +125,18 @@ func (o *datasyncOrchestrator) datamoverDelete(ctx context.Context, group, name 
 	}
 
 	// delete task
-	if _, err = o.datasyncClient.DeleteDatasyncTask(ctx, &datasync.DeleteTaskInput{
+	if _, err := o.datasyncClient.DeleteDatasyncTask(ctx, &datasync.DeleteTaskInput{
 		TaskArn: mover.Task.TaskArn,
 	}); err != nil {
 		return err
 	}
 
 	// delete source and destination locations
-	if err = o.deleteDatasyncLocation(ctx, name, aws.StringValue(mover.Task.SourceLocationArn), mover.Source.Type); err != nil {
+	if err := o.deleteDatasyncLocation(ctx, name, aws.StringValue(mover.Task.SourceLocationArn), mover.Source.Type); err != nil {
 		return err
 	}
 
-	if err = o.deleteDatasyncLocation(ctx, name, aws.StringValue(mover.Task.DestinationLocationArn), mover.Destination.Type); err != nil {
+	if err := o.deleteDatasyncLocation(ctx, name, aws.StringValue(mover.Task.DestinationLocationArn), mover.Destination.Type); err != nil {
 		return err
 	}
 
@@ -302,8 +302,7 @@ func (o *datasyncOrchestrator) createDatasyncLocation(ctx context.Context, mover
 		// we need to generate that first, before creating the location
 
 		path := fmt.Sprintf("/spinup/%s/%s/", o.server.org, group)
-		// TODO: the role name is 64 chars max, so we might exceed it
-		roleName := fmt.Sprintf("Spinup-%s-%s", mover, s3Arn.Resource)
+		roleName := fmt.Sprintf("%s-%s", mover, s3Arn.Resource)
 
 		roleARN, err := o.bucketAccessRole(ctx, path, roleName, s3Arn.String(), tags)
 		if err != nil {
@@ -330,12 +329,15 @@ func (o *datasyncOrchestrator) createDatasyncLocation(ctx context.Context, mover
 			}
 
 			log.Infof("created location successfully: %s", aws.StringValue(l.LocationArn))
+
 			return nil
 		}); err != nil {
 			log.Infof("failed to create location, timeout retrying: %s", err.Error())
 
 			// clean up the role we created earlier
-			o.deleteBucketAccessRole(ctx, aws.String(roleARN))
+			if err := o.deleteBucketAccessRole(ctx, aws.String(roleARN)); err != nil {
+				log.Warnf("failed deleting role %s: %s", roleARN, err)
+			}
 
 			return "", err
 		}
