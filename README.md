@@ -213,6 +213,18 @@ GET `/v1/datasync/{account}/movers/{group}/{name}`
 }
 ```
 
+### Delete Data Mover
+
+DELETE `/v1/datasync/{account}/movers/{group}/{name}`
+
+| Response Code                 | Definition                      |
+| ----------------------------- | --------------------------------|
+| **204 No Content**            | deleted the data mover          |
+| **400 Bad Request**           | badly formed request            |
+| **404 Not Found**             | account not found               |
+| **500 Internal Server Error** | a server error occurred         |
+
+
 ## License
 
 GNU Affero General Public License v3.0 (GNU AGPLv3)  

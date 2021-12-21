@@ -55,7 +55,7 @@ func (s *server) MoverCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Source == nil || req.Destination == nil || req.Source.Type == nil || req.Destination.Type == nil {
+	if req.Source == nil || req.Destination == nil || req.Source.Type == "" || req.Destination.Type == "" {
 		handleError(w, apierror.New(apierror.ErrBadRequest, "Source and Destination are required", nil))
 		return
 	}
@@ -91,6 +91,45 @@ func (s *server) MoverCreateHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Flywheel-Task", task.ID)
 	w.WriteHeader(http.StatusAccepted)
+}
+
+// MoverDeleteHandler deletes a Datasync mover
+func (s *server) MoverDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	w = LogWriter{w}
+	vars := mux.Vars(r)
+	account := vars["account"]
+	group := vars["group"]
+	name := vars["name"]
+
+	policy, err := s.moverDeletePolicy()
+	if err != nil {
+		handleError(w, apierror.New(apierror.ErrInternalError, "failed to generate policy", err))
+		return
+	}
+
+	orch, err := s.newDatasyncOrchestrator(
+		r.Context(),
+		account,
+		&sessionParams{
+			role: fmt.Sprintf("arn:aws:iam::%s:role/%s", account, s.session.RoleName),
+			policyArns: []string{
+				"arn:aws:iam::aws:policy/AWSDataSyncFullAccess",
+				"arn:aws:iam::aws:policy/ResourceGroupsandTagEditorReadOnlyAccess",
+			},
+			inlinePolicy: policy,
+		},
+	)
+	if err != nil {
+		handleError(w, errors.Wrap(err, "unable to delete datasync orchestrator"))
+		return
+	}
+
+	if err := orch.datamoverDelete(r.Context(), group, name); err != nil {
+		handleError(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // MoverListHandler lists all of the data movers in a group by id

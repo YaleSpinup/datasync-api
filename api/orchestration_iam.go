@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/YaleSpinup/apierror"
 	yiam "github.com/YaleSpinup/aws-go/services/iam"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/service/iam"
 
 	log "github.com/sirupsen/logrus"
@@ -127,6 +129,44 @@ func (o *datasyncOrchestrator) createBucketAccessRole(ctx context.Context, path,
 	}
 
 	return aws.StringValue(roleOutput.Arn), nil
+}
+
+// deleteBucketAccessRole handles deleting the bucket access role
+func (o *datasyncOrchestrator) deleteBucketAccessRole(ctx context.Context, rArn *string) error {
+	if rArn == nil {
+		return apierror.New(apierror.ErrBadRequest, "invalid role arn", nil)
+	}
+
+	log.Debugf("deleting bucket access role %s", *rArn)
+
+	roleArn, err := arn.Parse(aws.StringValue(rArn))
+	if err != nil {
+		return apierror.New(apierror.ErrInternalError, "failed to parse ARN "+aws.StringValue(rArn), err)
+	}
+
+	r := strings.Split(roleArn.Resource, "/")
+	roleName := r[len(r)-1]
+
+	log.Debugf("deleting policies for role %s", roleName)
+
+	policies, err := o.iamClient.ListRolePolicies(ctx, roleName)
+	if err != nil {
+		return err
+	}
+
+	for _, p := range policies {
+		if err := o.iamClient.DeleteRolePolicy(ctx, roleName, p); err != nil {
+			return err
+		}
+	}
+
+	if err = o.iamClient.DeleteRole(ctx, &iam.DeleteRoleInput{
+		RoleName: aws.String(roleName),
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // assumeRolePolicy generates the policy document to allow the datasync service to assume a role

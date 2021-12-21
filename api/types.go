@@ -13,8 +13,16 @@ type DatamoverCreateRequest struct {
 // DatamoverLocationInput is an abstraction for the different location type inputs
 // currently only S3 is supported
 type DatamoverLocationInput struct {
-	Type *LocationType
-	S3   *DescribeLocationS3Input
+	Type LocationType
+	S3   *DatamoverLocationS3Input
+}
+
+type DatamoverLocationS3Input struct {
+	S3BucketArn *string
+	// S3StorageClass is one of the following:
+	// OUTPOSTS, ONEZONE_IA, DEEP_ARCHIVE, GLACIER, INTELLIGENT_TIERING, STANDARD_IA, STANDARD
+	S3StorageClass *string
+	Subdirectory   *string
 }
 
 type LocationType string
@@ -30,14 +38,6 @@ func (lt LocationType) String() string {
 	return string(lt)
 }
 
-type DescribeLocationS3Input struct {
-	S3BucketArn *string
-	// S3StorageClass is one of the following:
-	// OUTPOSTS, ONEZONE_IA, DEEP_ARCHIVE, GLACIER, INTELLIGENT_TIERING, STANDARD_IA, STANDARD
-	S3StorageClass *string
-	Subdirectory   *string
-}
-
 // DatamoverResponse is the output from DataSync mover operations
 type DatamoverResponse struct {
 	// https://docs.aws.amazon.com/sdk-for-go/api/service/datasync/#DescribeTaskOutput
@@ -49,8 +49,9 @@ type DatamoverResponse struct {
 
 // DatamoverLocationOutput is an abstraction for the different location type outputs
 type DatamoverLocationOutput struct {
-	S3  *datasync.DescribeLocationS3Output  `json:",omitempty"`
-	EFS *datasync.DescribeLocationEfsOutput `json:",omitempty"`
-	SMB *datasync.DescribeLocationSmbOutput `json:",omitempty"`
-	NFS *datasync.DescribeLocationNfsOutput `json:",omitempty"`
+	Type LocationType
+	S3   *datasync.DescribeLocationS3Output  `json:",omitempty"`
+	EFS  *datasync.DescribeLocationEfsOutput `json:",omitempty"`
+	SMB  *datasync.DescribeLocationSmbOutput `json:",omitempty"`
+	NFS  *datasync.DescribeLocationNfsOutput `json:",omitempty"`
 }
