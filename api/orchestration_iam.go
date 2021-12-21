@@ -16,8 +16,8 @@ import (
 
 var assumeRolePolicyDoc []byte
 
-// BucketAccessRole generates the role (if it doesn't exist) for DataSync access to S3 bucket and returns the ARN
-func (o *datasyncOrchestrator) BucketAccessRole(ctx context.Context, path, role, bucketArn string, tags []Tag) (string, error) {
+// bucketAccessRole generates the role (if it doesn't exist) for DataSync access to S3 bucket and returns the ARN
+func (o *datasyncOrchestrator) bucketAccessRole(ctx context.Context, path, role, bucketArn string, tags []Tag) (string, error) {
 	if path == "" || role == "" {
 		return "", apierror.New(apierror.ErrBadRequest, "invalid path", nil)
 	}
@@ -79,12 +79,11 @@ func (o *datasyncOrchestrator) BucketAccessRole(ctx context.Context, path, role,
 	}
 
 	// attach default role policy to the role
-	err = o.iamClient.PutRolePolicy(ctx, &iam.PutRolePolicyInput{
+	if err = o.iamClient.PutRolePolicy(ctx, &iam.PutRolePolicyInput{
 		PolicyDocument: aws.String(string(defaultPolicyDoc)),
 		PolicyName:     aws.String("DataSyncBucketAccessPolicy"),
 		RoleName:       aws.String(role),
-	})
-	if err != nil {
+	}); err != nil {
 		return "", err
 	}
 

@@ -35,17 +35,7 @@ const (
 )
 
 func (lt LocationType) String() string {
-	switch lt {
-	case S3:
-		return "S3"
-	case EFS:
-		return "EFS"
-	case SMB:
-		return "SMB"
-	case NFS:
-		return "NFS"
-	}
-	return ""
+	return string(lt)
 }
 
 // DatamoverResponse is the output from DataSync mover operations
