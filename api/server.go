@@ -28,6 +28,7 @@ import (
 	"github.com/YaleSpinup/datasync-api/common"
 	"github.com/YaleSpinup/datasync-api/iam"
 	"github.com/YaleSpinup/datasync-api/session"
+	"github.com/YaleSpinup/flywheel"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/patrickmn/go-cache"
@@ -55,6 +56,7 @@ type server struct {
 	context      context.Context
 	session      session.Session
 	sessionCache *cache.Cache
+	flywheel     *flywheel.Manager
 	orgPolicy    string
 	org          string
 }
@@ -88,6 +90,12 @@ func NewServer(config common.Config) error {
 	}
 	s.orgPolicy = orgPolicy
 
+	manager, err := newFlywheelManager(config.Flywheel)
+	if err != nil {
+		return err
+	}
+	s.flywheel = manager
+
 	// Create a new session used for authentication and assuming cross account roles
 	log.Debugf("Creating new session with key '%s' in region '%s'", config.Account.Akid, config.Account.Region)
 	s.session = session.New(
@@ -98,9 +106,9 @@ func NewServer(config common.Config) error {
 	)
 
 	publicURLs := map[string]string{
-		"/v1/test/ping":    "public",
-		"/v1/test/version": "public",
-		"/v1/test/metrics": "public",
+		"/v1/datasync/ping":    "public",
+		"/v1/datasync/version": "public",
+		"/v1/datasync/metrics": "public",
 	}
 
 	// load routes

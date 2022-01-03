@@ -28,6 +28,7 @@ import (
 type Config struct {
 	ListenAddress string
 	Account       Account
+	Flywheel      Flywheel
 	Token         string
 	LogLevel      string
 	Version       Version
@@ -42,6 +43,16 @@ type Account struct {
 	Secret     string
 	Region     string
 	Role       string
+}
+
+// Flywheel is the configuration for task tracking in flywheel
+type Flywheel struct {
+	Namespace     string
+	RedisAddress  string
+	RedisDatabase string
+	RedisUsername string
+	RedisPassword string
+	TTL           string
 }
 
 // Version carries around the API version information

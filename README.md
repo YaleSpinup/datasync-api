@@ -10,6 +10,7 @@ GET /v1/test/version
 GET /v1/test/metrics
 
 GET    /v1/datasync/{account}/movers
+POST   /v1/datasync/{account}/movers/{group}
 GET    /v1/datasync/{account}/movers/{group}
 GET    /v1/datasync/{account}/movers/{group}/{id}
 ```
@@ -20,7 +21,58 @@ Authentication is accomplished via an encrypted pre-shared key in the `X-Auth-To
 
 ## Usage
 
-### List Data Movers
+### Create Data Mover
+
+Create requests are asynchronous and return a task ID in the header `X-Flywheel-Task`. This header can be used to get the task information and logs from the flywheel HTTP endpoint.
+
+POST `/v1/datasync/{account}/movers/{group}`
+
+| Response Code                 | Definition                      |
+| ----------------------------- | --------------------------------|
+| **202 Acepted**               | creating a data mover           |
+| **400 Bad Request**           | badly formed request            |
+| **404 Not Found**             | account not found               |
+| **500 Internal Server Error** | a server error occurred         |
+
+#### Example create request body
+
+```json
+{
+    "Name": "best-effort-datasync-01",
+    "Source": {
+        "Type": "S3",
+        "S3": {
+            "S3BucketArn": "arn:aws:s3:::tester1234567890.example.com",
+            "S3StorageClass": "STANDARD",
+            "Subdirectory": "/"
+        }
+    },
+	"Destination": {
+        "Type": "S3",
+        "S3": {
+            "S3BucketArn": "arn:aws:s3:::receiver1234567890.example.com",
+            "S3StorageClass": "STANDARD",
+            "Subdirectory": "/"
+        }
+    },
+	"Tags": [
+        {
+            "Key": "env",
+            "Value": "sbx"
+        }
+    ]
+}
+```
+
+#### Example create response headers
+
+```json
+{
+    "X-Flywheel-Task": "3b9ee9e9-9ffa-4b07-93c7-59e7e6f1fa7f"
+}
+```
+
+### List all Data Movers
 
 GET `/v1/datasync/{account}/movers`
 
@@ -35,9 +87,9 @@ GET `/v1/datasync/{account}/movers`
 
 ```json
 [
-    "task-0ee229c003ef4f0b8",
-    "task-06c39db367408c721"
-    "task-00261ad4da6768578"
+    "best-effort-datasync-01",
+    "latasync-2021",
+    "from-here-to-there-2"
 ]
 ```
 
@@ -56,14 +108,14 @@ GET `/v1/datasync/{account}/movers/{group}`
 
 ```json
 [
-    "task-0ee229c003ef4f0b8",
-    "task-00261ad4da6768578"
+    "best-effort-datasync-01",
+    "latasync-2021"
 ]
 ```
 
 ### Get details about a Data Mover, including its task, source and destination locations
 
-GET `/v1/datasync/{account}/movers/{group}/{id}`
+GET `/v1/datasync/{account}/movers/{group}/{name}`
 
 | Response Code                 | Definition                      |
 | ----------------------------- | --------------------------------|
@@ -91,7 +143,7 @@ GET `/v1/datasync/{account}/movers/{group}/{id}`
         "ErrorDetail": null,
         "Excludes": [],
         "Includes": [],
-        "Name": "tgtest3",
+        "Name": "best-effort-datasync-01",
         "Options": {
             "Atime": "BEST_EFFORT",
             "BytesPerSecond": -1,
@@ -160,6 +212,18 @@ GET `/v1/datasync/{account}/movers/{group}/{id}`
     ]
 }
 ```
+
+### Delete Data Mover
+
+DELETE `/v1/datasync/{account}/movers/{group}/{name}`
+
+| Response Code                 | Definition                      |
+| ----------------------------- | --------------------------------|
+| **204 No Content**            | deleted the data mover          |
+| **400 Bad Request**           | badly formed request            |
+| **404 Not Found**             | account not found               |
+| **500 Internal Server Error** | a server error occurred         |
+
 
 ## License
 

@@ -1,8 +1,11 @@
 package api
 
 import (
+	"strings"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/datasync"
+	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi"
 )
 
 type Tag struct {
@@ -33,11 +36,15 @@ func (tags *Tags) inOrg(org string) bool {
 }
 
 // normalize sets required tags
-func (tags *Tags) normalize(org string) Tags {
+func (tags *Tags) normalize(org, group string) Tags {
 	normalizedTags := Tags{
 		{
 			Key:   "spinup:org",
 			Value: org,
+		},
+		{
+			Key:   "spinup:spaceid",
+			Value: group,
 		},
 		{
 			Key:   "spinup:type",
@@ -50,12 +57,15 @@ func (tags *Tags) normalize(org string) Tags {
 	}
 
 	for _, t := range *tags {
-		switch t.Key {
-		case "yale:org", "spinup:org", "spinup:type", "spinup:flavor":
+		if strings.HasPrefix(t.Key, "aws:") {
 			continue
-		default:
-			normalizedTags = append(normalizedTags, t)
 		}
+
+		if t.Key == "spinup:org" || t.Key == "spinup:spaceid" || t.Key == "spinup:type" || t.Key == "spinup:flavor" {
+			continue
+		}
+
+		normalizedTags = append(normalizedTags, t)
 	}
 
 	return normalizedTags
@@ -77,6 +87,18 @@ func (tags *Tags) toDatasyncTags() []*datasync.TagListEntry {
 func fromDatasyncTags(datasyncTags []*datasync.TagListEntry) Tags {
 	tags := make(Tags, 0, len(datasyncTags))
 	for _, t := range datasyncTags {
+		tags = append(tags, Tag{
+			Key:   aws.StringValue(t.Key),
+			Value: aws.StringValue(t.Value),
+		})
+	}
+	return tags
+}
+
+// fromResourcegroupstaggingapiTags converts from Resourcegroupstaggingapi tags to api Tags
+func fromResourcegroupstaggingapiTags(resourcegroupstaggingapiTags []*resourcegroupstaggingapi.Tag) Tags {
+	tags := make(Tags, 0, len(resourcegroupstaggingapiTags))
+	for _, t := range resourcegroupstaggingapiTags {
 		tags = append(tags, Tag{
 			Key:   aws.StringValue(t.Key),
 			Value: aws.StringValue(t.Value),

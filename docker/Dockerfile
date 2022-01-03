@@ -6,7 +6,7 @@ ARG prerelease=""
 ARG githash=""
 ARG buildstamp=""
 
-RUN apk add --no-cache git openssh-client gcc musl-dev
+RUN apk add --no-cache gcc musl-dev
 
 RUN mkdir /app
 WORKDIR /app
