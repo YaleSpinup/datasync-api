@@ -11,7 +11,7 @@ type DatamoverCreateRequest struct {
 }
 
 // DatamoverLocationInput is an abstraction for the different location type inputs
-// currently only S3 is supported
+// currently only S3 and EFS are supported
 type DatamoverLocationInput struct {
 	Type LocationType
 	S3   *DatamoverLocationS3Input

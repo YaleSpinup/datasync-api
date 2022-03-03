@@ -12,7 +12,7 @@ GET /v1/test/metrics
 GET    /v1/datasync/{account}/movers
 POST   /v1/datasync/{account}/movers/{group}
 GET    /v1/datasync/{account}/movers/{group}
-GET    /v1/datasync/{account}/movers/{group}/{id}
+DELETE /v1/datasync/{account}/movers/{group}/{id}
 ```
 
 ## Authentication
@@ -24,6 +24,7 @@ Authentication is accomplished via an encrypted pre-shared key in the `X-Auth-To
 ### Create Data Mover
 
 Create requests are asynchronous and return a task ID in the header `X-Flywheel-Task`. This header can be used to get the task information and logs from the flywheel HTTP endpoint.
+When creating a mover you need to specify the source and destination locations - currently S3 and EFS are supported.
 
 POST `/v1/datasync/{account}/movers/{group}`
 
@@ -34,7 +35,7 @@ POST `/v1/datasync/{account}/movers/{group}`
 | **404 Not Found**             | account not found               |
 | **500 Internal Server Error** | a server error occurred         |
 
-#### Example create request body
+#### Example create request body (S3 to S3)
 
 ```json
 {
@@ -43,7 +44,6 @@ POST `/v1/datasync/{account}/movers/{group}`
         "Type": "S3",
         "S3": {
             "S3BucketArn": "arn:aws:s3:::tester1234567890.example.com",
-            "S3StorageClass": "STANDARD",
             "Subdirectory": "/"
         }
     },
@@ -61,6 +61,30 @@ POST `/v1/datasync/{account}/movers/{group}`
             "Value": "sbx"
         }
     ]
+}
+```
+
+#### Example create request body (S3 to EFS)
+
+```json
+{
+    "Name": "best-effort-datasync-02",
+    "Source": {
+        "Type": "S3",
+        "S3": {
+            "S3BucketArn": "arn:aws:s3:::tester1234567890.example.com",
+            "Subdirectory": "/"
+        }
+    },
+	"Destination": {
+        "Type": "EFS",
+        "EFS": {
+            "EfsFilesystemArn": "arn:aws:elasticfilesystem:us-east-1:1234567890:file-system/fs-01234567890123456",
+            "SecurityGroupArns": ["arn:aws:ec2:us-east-1:1234567890:security-group/sg-01234567890123456"],
+            "SubnetArn": "arn:aws:ec2:us-east-1:1234567890:subnet/subnet-01234567890123456",
+            "Subdirectory": "/"
+        }
+    }
 }
 ```
 
