@@ -15,6 +15,7 @@ type DatamoverCreateRequest struct {
 type DatamoverLocationInput struct {
 	Type LocationType
 	S3   *DatamoverLocationS3Input
+	EFS  *DatamoverLocationEFSInput
 }
 
 type DatamoverLocationS3Input struct {
@@ -23,6 +24,13 @@ type DatamoverLocationS3Input struct {
 	// OUTPOSTS, ONEZONE_IA, DEEP_ARCHIVE, GLACIER, INTELLIGENT_TIERING, STANDARD_IA, STANDARD
 	S3StorageClass *string
 	Subdirectory   *string
+}
+
+type DatamoverLocationEFSInput struct {
+	EfsFilesystemArn  *string
+	SecurityGroupArns []*string
+	SubnetArn         *string
+	Subdirectory      *string
 }
 
 type LocationType string

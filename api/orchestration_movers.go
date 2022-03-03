@@ -313,7 +313,7 @@ func (o *datasyncOrchestrator) createDatasyncLocation(ctx context.Context, mover
 		// so we need to retry when creating the location
 		var l *datasync.CreateLocationS3Output
 		if err = retry(6, 0, 5*time.Second, func() error {
-			log.Info("retrying to create datasync location ...")
+			log.Info("retrying to create S3 datasync location ...")
 
 			var err error
 			l, err = o.datasyncClient.CreateDatasyncLocationS3(ctx, &datasync.CreateLocationS3Input{
@@ -343,6 +343,26 @@ func (o *datasyncOrchestrator) createDatasyncLocation(ctx context.Context, mover
 		}
 
 		return aws.StringValue(l.LocationArn), nil
+	case EFS:
+		log.Info("creating EFS datasync location ...")
+
+		l, err := o.datasyncClient.CreateDatasyncLocationEfs(ctx, &datasync.CreateLocationEfsInput{
+			EfsFilesystemArn: input.EFS.EfsFilesystemArn,
+			Ec2Config: &datasync.Ec2Config{
+				SecurityGroupArns: input.EFS.SecurityGroupArns,
+				SubnetArn:         input.EFS.SubnetArn,
+			},
+			Subdirectory: input.EFS.Subdirectory,
+			Tags:         tags.toDatasyncTags(),
+		})
+		if err != nil {
+			log.Debugf("got an error creating location: %s", err)
+			return "", err
+		}
+
+		log.Infof("created location successfully: %s", aws.StringValue(l.LocationArn))
+
+		return aws.StringValue(l.LocationArn), nil
 	default:
 		log.Warnf("type %s didn't match any supported location types", input.Type)
 		return "", apierror.New(apierror.ErrBadRequest, "invalid location type", nil)
@@ -350,7 +370,6 @@ func (o *datasyncOrchestrator) createDatasyncLocation(ctx context.Context, mover
 }
 
 // deleteDatasyncLocation deletes the specific location type and associated resources
-// func (o *datasyncOrchestrator) deleteDatasyncLocation(ctx context.Context, mover, group string, input *DatamoverLocationOutput) error {
 func (o *datasyncOrchestrator) deleteDatasyncLocation(ctx context.Context, mover, lArn string, lType LocationType) error {
 	if mover == "" || lType == "" || lArn == "" {
 		return apierror.New(apierror.ErrBadRequest, "invalid input", nil)
@@ -368,7 +387,7 @@ func (o *datasyncOrchestrator) deleteDatasyncLocation(ctx context.Context, mover
 		if _, err := o.datasyncClient.DeleteDatasyncLocation(ctx, &datasync.DeleteLocationInput{
 			LocationArn: aws.String(lArn),
 		}); err != nil {
-			log.Warnf("error deleting source location %s: %s", lArn, err)
+			log.Warnf("error deleting location %s: %s", lArn, err)
 			return err
 		}
 
@@ -377,6 +396,15 @@ func (o *datasyncOrchestrator) deleteDatasyncLocation(ctx context.Context, mover
 			if err := o.deleteBucketAccessRole(ctx, l.S3.S3Config.BucketAccessRoleArn); err != nil {
 				return err
 			}
+		}
+
+		return nil
+	case EFS:
+		if _, err := o.datasyncClient.DeleteDatasyncLocation(ctx, &datasync.DeleteLocationInput{
+			LocationArn: aws.String(lArn),
+		}); err != nil {
+			log.Warnf("error deleting location %s: %s", lArn, err)
+			return err
 		}
 
 		return nil
