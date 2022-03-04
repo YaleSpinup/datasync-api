@@ -112,6 +112,29 @@ func (d *Datasync) ListDatasyncTasks(ctx context.Context) ([]string, error) {
 	return tasks, nil
 }
 
+func (d *Datasync) ListDatasyncTasksexecutions(ctx context.Context) ([]string, error) {
+	log.Info("listing datasync tasks")
+
+	filters := []*datasync.TaskFilter{}
+
+	tasks := []string{}
+	if err := d.Service.ListTasksExecutionWithContext(ctx,
+		&datasync.ListTasksInput{Filters: filters},
+		func(page *datasync.ListTasksOutput, lastPage bool) bool {
+			for _, c := range page.Tasks {
+				tasks = append(tasks, aws.StringValue(c.TaskArn))
+			}
+
+			return true
+		}); err != nil {
+		return nil, ErrCode("failed to list tasks", err)
+	}
+
+	log.Debugf("listing datasync tasks output: %+v", tasks)
+
+	return tasks, nil
+}
+
 // CreateDatasyncLocationS3 creates S3 datasync location
 func (d *Datasync) CreateDatasyncLocationS3(ctx context.Context, input *datasync.CreateLocationS3Input) (*datasync.CreateLocationS3Output, error) {
 	if input == nil {
