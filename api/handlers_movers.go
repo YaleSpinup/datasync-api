@@ -231,13 +231,11 @@ func (s *server) MoverShowrunHandler(w http.ResponseWriter, r *http.Request) {
 			},
 		},
 	)
-	orch.datasyncClient.Service.ListTaskExecutions()
 
 	if err != nil {
 		handleError(w, errors.Wrap(err, "unable to create datasync orchestrator"))
 		return
 	}
-	orch.
 
 	resp, err := orch.datamoverDescribe(r.Context(), group, name)
 	if err != nil {

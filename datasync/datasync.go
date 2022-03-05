@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/datasync"
 	"github.com/aws/aws-sdk-go/service/datasync/datasynciface"
@@ -115,22 +116,23 @@ func (d *Datasync) ListDatasyncTasks(ctx context.Context) ([]string, error) {
 func (d *Datasync) ListDatasyncTasksexecutions(ctx context.Context) ([]string, error) {
 	log.Info("listing datasync tasks")
 
-	filters := []*datasync.TaskFilter{}
+	//filters := []*datasync.TaskFilter{}
 
 	tasks := []string{}
-	if err := d.Service.ListTasksExecutionWithContext(ctx,
-		&datasync.ListTasksInput{Filters: filters},
-		func(page *datasync.ListTasksOutput, lastPage bool) bool {
-			for _, c := range page.Tasks {
-				tasks = append(tasks, aws.StringValue(c.TaskArn))
-			}
+	page, err := d.Service.ListTaskExecutionsWithContext(ctx,
+		&datasync.ListTaskExecutionsInput{},
+		func(r *request.Request) {
 
-			return true
-		}); err != nil {
+		})
+
+	if err != nil {
 		return nil, ErrCode("failed to list tasks", err)
 	}
+	for _, c := range page.TaskExecutions {
+		tasks = append(tasks, aws.StringValue(c.TaskExecutionArn))
+	}
 
-	log.Debugf("listing datasync tasks output: %+v", tasks)
+	log.Debugf("listing datasync tasks execution output: %+v", tasks)
 
 	return tasks, nil
 }
@@ -231,7 +233,7 @@ func (d *Datasync) DescribeDatasyncTask(ctx context.Context, tArn string) (*data
 
 	out, err := d.Service.DescribeTaskWithContext(ctx, &datasync.DescribeTaskInput{
 		TaskArn: aws.String(tArn),
-	})
+	}, func(r *request.Request) {})
 	if err != nil {
 		return nil, ErrCode("failed to describe task", err)
 	}
