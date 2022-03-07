@@ -185,6 +185,7 @@ func (o *datasyncOrchestrator) datamoverDescribe(ctx context.Context, group, nam
 		Tags:        tags,
 	}, nil
 }
+
 func (o *datasyncOrchestrator) datamoverDescribebyid(ctx context.Context, group, name string, id string) (*DatamoverResponse, error) {
 	// get information about the task, including tags
 	task, tags, err := o.taskDetailsFromName(ctx, group, name)
@@ -493,7 +494,7 @@ func (o *datasyncOrchestrator) taskDetailsFromName(ctx context.Context, group, n
 
 	return nil, nil, apierror.New(apierror.ErrNotFound, "datasync mover not found", nil)
 }
-func (o *datasyncOrchestrator) taskDetailsFromid(ctx context.Context, group, name string, id string) (*datasync.DescribeTaskOutput, Tags, error) {
+func (o *datasyncOrchestrator) TaskDetailsFromid(ctx context.Context, group, name string, id string) (*datasync.DescribeTaskOutput, Tags, error) {
 	if group == "" || name == "" || id == "" {
 		return nil, nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
 	}

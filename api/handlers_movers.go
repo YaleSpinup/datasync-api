@@ -277,7 +277,7 @@ func (s *server) MoverShowrunbyIDHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	resp, err := orch.datamoverDescribebyid(r.Context(), group, name, id)
+	resp, _, err := orch.TaskDetailsFromid(r.Context(), group, name, id)
 	if err != nil {
 		handleError(w, err)
 		return
