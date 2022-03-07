@@ -186,48 +186,6 @@ func (o *datasyncOrchestrator) datamoverDescribe(ctx context.Context, group, nam
 	}, nil
 }
 
-func (o *datasyncOrchestrator) datamoverDescribebyid(ctx context.Context, group, name string, id string) (*DatamoverResponse, error) {
-	// get information about the task, including tags
-	task, tags, err := o.taskDetailsFromName(ctx, group, name)
-	if err != nil {
-		return nil, err
-	}
-
-	// get a list of all locations with their type
-	// there's no way to determine the type of a specific location :(
-	locations, err := o.datasyncClient.ListDatasyncLocations(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	srcLocationType, ok := locations[*task.SourceLocationArn]
-	if !ok {
-		log.Warn("unable to determine source location type")
-	}
-
-	dstLocationType, ok := locations[*task.DestinationLocationArn]
-	if !ok {
-		log.Warn("unable to determine destination location type")
-	}
-
-	srcLocation, err := o.describeDatasyncLocation(ctx, srcLocationType, aws.StringValue(task.SourceLocationArn))
-	if err != nil {
-		return nil, err
-	}
-
-	dstLocation, err := o.describeDatasyncLocation(ctx, dstLocationType, aws.StringValue(task.DestinationLocationArn))
-	if err != nil {
-		return nil, err
-	}
-
-	return &DatamoverResponse{
-		Task:        task,
-		Source:      srcLocation,
-		Destination: dstLocation,
-		Tags:        tags,
-	}, nil
-}
-
 // datamoverList lists all data movers (tasks) in a group by querying the Resourcegroupstaggingapi
 func (o *datasyncOrchestrator) datamoverList(ctx context.Context, group string) ([]string, error) {
 	filters := []*resourcegroupstaggingapi.TagFilter{
