@@ -37,5 +37,7 @@ func (s *server) routes() {
 	api.HandleFunc("/{account}/movers/{group}/{name}", s.MoverShowHandler).Methods(http.MethodGet)
 	api.HandleFunc("/{account}/movers/{group}/{name}", s.MoverDeleteHandler).Methods(http.MethodDelete)
 	// api.HandleFunc("/{account}/movers/{group}/{name}", s.MoverUpdateHandler).Methods(http.MethodPut)
+
 	api.HandleFunc("/{account}/movers/{group}/{name}/runs", s.MoverShowrunHandler).Methods(http.MethodGet)
+	api.HandleFunc("/{account}/movers/{group}/{name}/runs/{id}", s.MoverShowrunbyIDHandler).Methods(http.MethodGet)
 }

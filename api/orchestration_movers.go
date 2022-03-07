@@ -185,6 +185,47 @@ func (o *datasyncOrchestrator) datamoverDescribe(ctx context.Context, group, nam
 		Tags:        tags,
 	}, nil
 }
+func (o *datasyncOrchestrator) datamoverDescribebyid(ctx context.Context, group, name string, id string) (*DatamoverResponse, error) {
+	// get information about the task, including tags
+	task, tags, err := o.taskDetailsFromName(ctx, group, name)
+	if err != nil {
+		return nil, err
+	}
+
+	// get a list of all locations with their type
+	// there's no way to determine the type of a specific location :(
+	locations, err := o.datasyncClient.ListDatasyncLocations(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	srcLocationType, ok := locations[*task.SourceLocationArn]
+	if !ok {
+		log.Warn("unable to determine source location type")
+	}
+
+	dstLocationType, ok := locations[*task.DestinationLocationArn]
+	if !ok {
+		log.Warn("unable to determine destination location type")
+	}
+
+	srcLocation, err := o.describeDatasyncLocation(ctx, srcLocationType, aws.StringValue(task.SourceLocationArn))
+	if err != nil {
+		return nil, err
+	}
+
+	dstLocation, err := o.describeDatasyncLocation(ctx, dstLocationType, aws.StringValue(task.DestinationLocationArn))
+	if err != nil {
+		return nil, err
+	}
+
+	return &DatamoverResponse{
+		Task:        task,
+		Source:      srcLocation,
+		Destination: dstLocation,
+		Tags:        tags,
+	}, nil
+}
 
 // datamoverList lists all data movers (tasks) in a group by querying the Resourcegroupstaggingapi
 func (o *datasyncOrchestrator) datamoverList(ctx context.Context, group string) ([]string, error) {
@@ -446,6 +487,53 @@ func (o *datasyncOrchestrator) taskDetailsFromName(ctx context.Context, group, n
 		}
 
 		if aws.StringValue(task.Name) == name {
+			return task, fromResourcegroupstaggingapiTags(r.Tags), nil
+		}
+	}
+
+	return nil, nil, apierror.New(apierror.ErrNotFound, "datasync mover not found", nil)
+}
+func (o *datasyncOrchestrator) taskDetailsFromid(ctx context.Context, group, name string, id string) (*datasync.DescribeTaskOutput, Tags, error) {
+	if group == "" || name == "" || id == "" {
+		return nil, nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
+	filters := []*resourcegroupstaggingapi.TagFilter{
+		{
+			Key:   "spinup:org",
+			Value: []string{o.server.org},
+		},
+		{
+			Key:   "spinup:type",
+			Value: []string{"storage"},
+		},
+		{
+			Key:   "spinup:flavor",
+			Value: []string{"datamover"},
+		},
+		{
+			Key:   "spinup:spaceid",
+			Value: []string{group},
+		},
+	}
+
+	// get a list of all datasync resources in the group
+	out, err := o.rgClient.GetResourcesWithTags(ctx, []string{"datasync:task"}, filters)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(out) == 0 {
+		return nil, nil, apierror.New(apierror.ErrNotFound, "datasync mover not found", nil)
+	}
+
+	for _, r := range out {
+		task, err := o.datasyncClient.DescribeDatasyncTask(ctx, aws.StringValue(r.ResourceARN))
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if aws.StringValue(task.Name) == name && aws.StringValue(task.TaskArn) == id {
 			return task, fromResourcegroupstaggingapiTags(r.Tags), nil
 		}
 	}
