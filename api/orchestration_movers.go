@@ -453,8 +453,8 @@ func (o *datasyncOrchestrator) taskDetailsFromName(ctx context.Context, group, n
 	return nil, nil, apierror.New(apierror.ErrNotFound, "datasync mover not found", nil)
 }
 
-// taskRunsFromName finds a datasync task runs  based on its group/name and returns information about it
-func (o *datasyncOrchestrator) taskRunsFromName(ctx context.Context, taskArn string) ([]string, error) {
+// taskRunsFromTaskArn finds a datasync task runs  based on its group/name and returns information about it
+func (o *datasyncOrchestrator) taskRunsFromTaskArn(ctx context.Context, taskArn string) ([]string, error) {
 	if taskArn == "" {
 		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
 	}

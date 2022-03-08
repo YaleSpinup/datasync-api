@@ -244,7 +244,7 @@ func (s *server) MoverShowrunHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// from move get info of all executions (runs) for a taskArn (moveId)
-	resp, err := orch.taskRunsFromName(r.Context(), *respL.Task.TaskArn)
+	resp, err := orch.taskRunsFromTaskArn(r.Context(), *respL.Task.TaskArn)
 	if err != nil {
 		handleError(w, err)
 		return
