@@ -113,14 +113,14 @@ func (d *Datasync) ListDatasyncTasks(ctx context.Context) ([]string, error) {
 	return tasks, nil
 }
 
-func (d *Datasync) ListDatasyncTasksexecutions(ctx context.Context) ([]string, error) {
+func (d *Datasync) ListDatasyncTasksexecutions(ctx context.Context, taskArn string) ([]string, error) {
 	log.Info("listing datasync tasks")
 
-	//filters := []*datasync.TaskFilter{}
+	filters := &datasync.ListTaskExecutionsInput{TaskArn: &taskArn}
 
 	tasks := []string{}
 	page, err := d.Service.ListTaskExecutionsWithContext(ctx,
-		&datasync.ListTaskExecutionsInput{},
+		filters,
 		func(r *request.Request) {
 
 		})
@@ -135,6 +135,28 @@ func (d *Datasync) ListDatasyncTasksexecutions(ctx context.Context) ([]string, e
 	log.Debugf("listing datasync tasks execution output: %+v", tasks)
 
 	return tasks, nil
+}
+
+func (d *Datasync) DescribeTaskExecution(ctx context.Context, id string) (*datasync.DescribeTaskExecutionOutput, error) {
+	log.Info("listing datasync tasks")
+
+	//NO Task Arn ?? (MoveID) Kindly review
+	filters := &datasync.DescribeTaskExecutionInput{TaskExecutionArn: &id}
+
+	tasks := []string{}
+	out, err := d.Service.DescribeTaskExecutionWithContext(ctx,
+		filters,
+		func(r *request.Request) {
+
+		})
+
+	if err != nil {
+		return nil, ErrCode("failed to list tasks", err)
+	}
+
+	log.Debugf("listing datasync tasks execution output: %+v", tasks)
+
+	return out, nil
 }
 
 // CreateDatasyncLocationS3 creates S3 datasync location

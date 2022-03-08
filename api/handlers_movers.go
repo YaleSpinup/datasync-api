@@ -237,8 +237,14 @@ func (s *server) MoverShowrunHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//VISIT AGAIN
-	resp, err := orch.taskRunsFromName(r.Context(), group, name)
+	//Got info about the move
+	respL, errL := orch.datamoverDescribe(r.Context(), group, name)
+	if errL != nil {
+		handleError(w, errL)
+		return
+	}
+	// from move get info of all executions (runs) for a taskArn (moveId)
+	resp, err := orch.taskRunsFromName(r.Context(), *respL.Task.TaskArn)
 	if err != nil {
 		handleError(w, err)
 		return
@@ -258,8 +264,8 @@ func (s *server) MoverShowrunbyIDHandler(w http.ResponseWriter, r *http.Request)
 	w = LogWriter{w}
 	vars := mux.Vars(r)
 	account := vars["account"]
-	group := vars["group"]
-	name := vars["name"]
+	// group := vars["group"]
+	// name := vars["name"]
 	id := vars["id"]
 	orch, err := s.newDatasyncOrchestrator(
 		r.Context(),
@@ -278,7 +284,15 @@ func (s *server) MoverShowrunbyIDHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	resp, _, err := orch.TaskDetailsFromid(r.Context(), group, name, id)
+	// //Got info about the move
+	// respL, errL := orch.datamoverDescribe(r.Context(), group, name)
+	// if errL != nil {
+	// 	handleError(w, errL)
+	// 	return
+	// }
+
+	// from move get info of all executions (runs) for a taskArn (moveId)
+	resp, err := orch.TaskDetailsFromid(r.Context(), id)
 	if err != nil {
 		handleError(w, err)
 		return
