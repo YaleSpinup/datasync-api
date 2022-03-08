@@ -237,7 +237,8 @@ func (s *server) MoverShowrunHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := orch.datamoverDescribe(r.Context(), group, name)
+	//VISIT AGAIN
+	resp, err := orch.taskRunsFromName(r.Context(), group, name)
 	if err != nil {
 		handleError(w, err)
 		return

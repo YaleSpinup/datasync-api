@@ -452,6 +452,46 @@ func (o *datasyncOrchestrator) taskDetailsFromName(ctx context.Context, group, n
 
 	return nil, nil, apierror.New(apierror.ErrNotFound, "datasync mover not found", nil)
 }
+
+// taskRunsFromName finds a datasync task runs  based on its group/name and returns information about it
+func (o *datasyncOrchestrator) taskRunsFromName(ctx context.Context, group, name string) ([]string, error) {
+	if group == "" || name == "" {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
+	// filters := []*resourcegroupstaggingapi.TagFilter{
+	// 	{
+	// 		Key:   "spinup:org",
+	// 		Value: []string{o.server.org},
+	// 	},
+	// 	{
+	// 		Key:   "spinup:type",
+	// 		Value: []string{"storage"},
+	// 	},
+	// 	{
+	// 		Key:   "spinup:flavor",
+	// 		Value: []string{"datamover"},
+	// 	},
+	// 	{
+	// 		Key:   "spinup:spaceid",
+	// 		Value: []string{group},
+	// 	},
+	// }
+
+	// get a list of all datasync resources in the group
+	out, err := o.datasyncClient.ListDatasyncTasksexecutions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	//VISIT  : When 0 should return error or empty array
+	if len(out) == 0 {
+		return nil, apierror.New(apierror.ErrNotFound, "datasync mover not found", nil)
+	}
+
+	return out, apierror.New(apierror.ErrNotFound, "datasync mover not found", nil)
+}
+
 func (o *datasyncOrchestrator) TaskDetailsFromid(ctx context.Context, group, name string, id string) (*datasync.DescribeTaskOutput, Tags, error) {
 	if group == "" || name == "" || id == "" {
 		return nil, nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
