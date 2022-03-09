@@ -113,50 +113,47 @@ func (d *Datasync) ListDatasyncTasks(ctx context.Context) ([]string, error) {
 	return tasks, nil
 }
 
-func (d *Datasync) ListDatasyncTasksexecutions(ctx context.Context, taskArn string) ([]string, error) {
+func (d *Datasync) ListDatasyncTaskExecutions(ctx context.Context, taskArn string) ([]string, error) {
 	log.Info("listing datasync tasks")
 
 	filters := &datasync.ListTaskExecutionsInput{TaskArn: &taskArn}
 
-	tasks := []string{}
-	page, err := d.Service.ListTaskExecutionsWithContext(ctx,
+	execs := []string{}
+
+	if err := d.Service.ListTaskExecutionsPagesWithContext(ctx,
 		filters,
-		func(r *request.Request) {
-
-		})
-
-	if err != nil {
+		func(page *datasync.ListTaskExecutionsOutput, lastPage bool) bool {
+			for _, c := range page.TaskExecutions {
+				execs = append(execs, aws.StringValue(c.TaskExecutionArn))
+			}
+			return true
+		},
+		func(r *request.Request) {}); err != nil {
 		return nil, ErrCode("failed to list tasks", err)
 	}
-	for _, c := range page.TaskExecutions {
-		tasks = append(tasks, aws.StringValue(c.TaskExecutionArn))
-	}
 
-	log.Debugf("listing datasync tasks execution output: %+v", tasks)
+	log.Debugf("listing datasync tasks execution output: %+v", execs)
 
-	return tasks, nil
+	return execs, nil
 }
 
 func (d *Datasync) DescribeTaskExecution(ctx context.Context, id string) (*datasync.DescribeTaskExecutionOutput, error) {
-	log.Info("listing datasync tasks")
+	log.Info("describing datasync task executions")
 
 	//NO Task Arn ?? (MoveID) Kindly review
 	filters := &datasync.DescribeTaskExecutionInput{TaskExecutionArn: &id}
 
-	tasks := []string{}
-	out, err := d.Service.DescribeTaskExecutionWithContext(ctx,
+	exe, err := d.Service.DescribeTaskExecutionWithContext(ctx,
 		filters,
-		func(r *request.Request) {
-
-		})
+		func(r *request.Request) {})
 
 	if err != nil {
 		return nil, ErrCode("failed to list tasks", err)
 	}
 
-	log.Debugf("listing datasync tasks execution output: %+v", tasks)
+	log.Debugf("listing datasync tasks execution output: %+v", exe)
 
-	return out, nil
+	return exe, nil
 }
 
 // CreateDatasyncLocationS3 creates S3 datasync location

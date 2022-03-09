@@ -213,7 +213,8 @@ func (s *server) MoverShowHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(j)
 }
-func (s *server) MoverShowrunHandler(w http.ResponseWriter, r *http.Request) {
+
+func (s *server) RunListHandler(w http.ResponseWriter, r *http.Request) {
 	w = LogWriter{w}
 	vars := mux.Vars(r)
 	account := vars["account"]
@@ -229,8 +230,7 @@ func (s *server) MoverShowrunHandler(w http.ResponseWriter, r *http.Request) {
 				"arn:aws:iam::aws:policy/AWSDataSyncReadOnlyAccess",
 				"arn:aws:iam::aws:policy/ResourceGroupsandTagEditorReadOnlyAccess",
 			},
-		},
-	)
+		})
 
 	if err != nil {
 		handleError(w, errors.Wrap(err, "unable to create datasync orchestrator"))
@@ -260,7 +260,8 @@ func (s *server) MoverShowrunHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(j)
 }
-func (s *server) MoverShowrunbyIDHandler(w http.ResponseWriter, r *http.Request) {
+
+func (s *server) RunShowHandler(w http.ResponseWriter, r *http.Request) {
 	w = LogWriter{w}
 	vars := mux.Vars(r)
 	account := vars["account"]
@@ -283,13 +284,6 @@ func (s *server) MoverShowrunbyIDHandler(w http.ResponseWriter, r *http.Request)
 		handleError(w, errors.Wrap(err, "unable to create datasync orchestrator"))
 		return
 	}
-
-	// //Got info about the move
-	// respL, errL := orch.datamoverDescribe(r.Context(), group, name)
-	// if errL != nil {
-	// 	handleError(w, errL)
-	// 	return
-	// }
 
 	// from move get info of all executions (runs) for a taskArn (moveId)
 	resp, err := orch.TaskDetailsFromid(r.Context(), id)

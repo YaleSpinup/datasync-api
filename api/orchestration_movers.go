@@ -460,26 +460,24 @@ func (o *datasyncOrchestrator) taskRunsFromTaskArn(ctx context.Context, taskArn 
 	}
 
 	// get a list of all datasync resources in the group
-	out, err := o.datasyncClient.ListDatasyncTasksexecutions(ctx, taskArn)
+	out, err := o.datasyncClient.ListDatasyncTaskExecutions(ctx, taskArn)
 	if err != nil {
 		return nil, err
 	}
 
-	//VISIT  : When 0 should return error or empty array
-	if len(out) == 0 {
-		return nil, apierror.New(apierror.ErrNotFound, "datasync mover not found", nil)
-	}
-
-	return out, apierror.New(apierror.ErrNotFound, "datasync mover not found", nil)
+	return out, nil
 }
 
 func (o *datasyncOrchestrator) TaskDetailsFromid(ctx context.Context, id string) (*datasync.DescribeTaskExecutionOutput, error) {
 	if id == "" {
 		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
 	}
+
 	out, err := o.datasyncClient.DescribeTaskExecution(ctx, id)
+
 	if err != nil {
 		return nil, err
 	}
-	return out, apierror.New(apierror.ErrNotFound, "datasync mover not found", nil)
+
+	return out, nil
 }
