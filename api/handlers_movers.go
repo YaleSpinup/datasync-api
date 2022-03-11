@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/YaleSpinup/apierror"
 	"github.com/gorilla/mux"
@@ -237,14 +238,8 @@ func (s *server) RunListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Got info about the move
-	respL, errL := orch.datamoverDescribe(r.Context(), group, name)
-	if errL != nil {
-		handleError(w, errL)
-		return
-	}
 	// from move get info of all executions (runs) for a taskArn (moveId)
-	resp, err := orch.taskRunsFromTaskArn(r.Context(), *respL.Task.TaskArn)
+	resp, err := orch.datamoverRunList(r.Context(), group, name, false)
 	if err != nil {
 		handleError(w, err)
 		return
@@ -262,12 +257,14 @@ func (s *server) RunListHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) RunShowHandler(w http.ResponseWriter, r *http.Request) {
+
 	w = LogWriter{w}
 	vars := mux.Vars(r)
 	account := vars["account"]
-	// group := vars["group"]
-	// name := vars["name"]
+	group := vars["group"]
+	name := vars["name"]
 	id := vars["id"]
+
 	orch, err := s.newDatasyncOrchestrator(
 		r.Context(),
 		account,
@@ -285,8 +282,28 @@ func (s *server) RunShowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	respAll, errAll := orch.datamoverRunList(r.Context(), group, name, true)
+
+	if errAll != nil {
+		handleError(w, err)
+		return
+	}
+	taskArn := ""
+
+	for _, ta := range respAll {
+		fmt.Println(ta, id, "Task and ID")
+		if strings.Contains(ta, id) {
+			taskArn = ta
+			break
+		}
+	}
+	if taskArn == "" {
+		handleError(w, apierror.New(apierror.ErrNotFound, "run id not found", err))
+		return
+	}
+
 	// from move get info of all executions (runs) for a taskArn (moveId)
-	resp, err := orch.TaskDetailsFromid(r.Context(), id)
+	resp, err := orch.datamoverRunDescribe(r.Context(), taskArn)
 	if err != nil {
 		handleError(w, err)
 		return

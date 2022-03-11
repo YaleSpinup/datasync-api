@@ -453,31 +453,55 @@ func (o *datasyncOrchestrator) taskDetailsFromName(ctx context.Context, group, n
 	return nil, nil, apierror.New(apierror.ErrNotFound, "datasync mover not found", nil)
 }
 
-// taskRunsFromTaskArn finds a datasync task runs  based on its group/name and returns information about it
-func (o *datasyncOrchestrator) taskRunsFromTaskArn(ctx context.Context, taskArn string) ([]string, error) {
-	if taskArn == "" {
+// datamoverRunList finds a datasync task runs  based on its group/name and returns information about it
+func (o *datasyncOrchestrator) datamoverRunList(ctx context.Context, group, name string, fullArn bool) ([]string, error) {
+	respL, errL := o.datamoverDescribe(ctx, group, name)
+
+	if errL != nil {
 		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
 	}
 
-	// get a list of all datasync resources in the group
-	out, err := o.datasyncClient.ListDatasyncTaskExecutions(ctx, taskArn)
+	// get a list of all datasync task runs for the Task Arn in
+	out, err := o.datasyncClient.ListDatasyncTaskExecutions(ctx, *respL.Task.TaskArn)
+	newOut := make([]string, 0)
+
+	for _, v := range out {
+		if fullArn {
+			newOut = append(newOut, v)
+		} else {
+			arrArn := strings.Split(v, "/")
+			lastPartOfARN := arrArn[len(arrArn)-1:][0]
+			newOut = append(newOut, lastPartOfARN)
+		}
+
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
-	return out, nil
+	return newOut, nil
 }
 
-func (o *datasyncOrchestrator) TaskDetailsFromid(ctx context.Context, id string) (*datasync.DescribeTaskExecutionOutput, error) {
+func (o *datasyncOrchestrator) datamoverRunDescribe(ctx context.Context, id string) (*DatamoverRun, error) {
 	if id == "" {
 		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
 	}
 
-	out, err := o.datasyncClient.DescribeTaskExecution(ctx, id)
+	exe, err := o.datasyncClient.DescribeTaskExecution(ctx, id)
 
 	if err != nil {
 		return nil, err
 	}
+
+	out := &DatamoverRun{BytesTransferred: exe.BytesTransferred,
+		BytesWritten:             exe.BytesWritten,
+		EstimatedBytesToTransfer: exe.EstimatedBytesToTransfer,
+		EstimatedFilesToTransfer: exe.EstimatedFilesToTransfer,
+		FilesTransferred:         exe.FilesTransferred,
+		StartTime:                exe.StartTime,
+		Status:                   exe.Status,
+		Result:                   exe.Result}
 
 	return out, nil
 }
