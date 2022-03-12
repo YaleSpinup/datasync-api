@@ -453,62 +453,50 @@ func (o *datasyncOrchestrator) taskDetailsFromName(ctx context.Context, group, n
 	return nil, nil, apierror.New(apierror.ErrNotFound, "datasync mover not found", nil)
 }
 
-// datamoverRunList finds a datasync task runs  based on its group/name and returns information about it
-func (o *datasyncOrchestrator) datamoverRunList(ctx context.Context, group, name string, fullArn bool) ([]string, error) {
-
-	respL, errL := o.datamoverDescribe(ctx, group, name)
-
-	if errL != nil {
-		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
-	}
-
-	// get a list of all datasync task runs for the Task Arn in
-	out, err := o.datasyncClient.ListDatasyncTaskExecutions(ctx, *respL.Task.TaskArn)
-	newOut := make([]string, 0)
-
-	for _, v := range out {
-		if fullArn {
-			newOut = append(newOut, v)
-		} else {
-			arrArn := strings.Split(v, "/")
-			if len(arrArn) > 0 {
-				lastPartOfARN := arrArn[len(arrArn)-1:][0]
-				newOut = append(newOut, lastPartOfARN)
-			} else {
-				newOut = append(newOut, v)
-
-			}
-
-		}
-
-	}
-
+// datamoverRunList returns a list of executions for a given task
+func (o *datasyncOrchestrator) datamoverRunList(ctx context.Context, group, name string) ([]string, error) {
+	task, _, err := o.taskDetailsFromName(ctx, group, name)
 	if err != nil {
 		return nil, err
 	}
 
-	return newOut, nil
+	out, err := o.datasyncClient.ListDatasyncTaskExecutions(ctx, aws.StringValue(task.TaskArn))
+	if err != nil {
+		return nil, err
+	}
+
+	execs := []string{}
+	for _, v := range out {
+		parts := strings.Split(v, "/")
+		if len(parts) > 0 {
+			execs = append(execs, parts[len(parts)-1])
+		}
+	}
+
+	return execs, nil
 }
 
-func (o *datasyncOrchestrator) datamoverRunDescribe(ctx context.Context, id string) (*DatamoverRun, error) {
-	if id == "" {
-		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
-	}
-
-	exe, err := o.datasyncClient.DescribeTaskExecution(ctx, id)
-
+func (o *datasyncOrchestrator) datamoverRunDescribe(ctx context.Context, group, name, id string) (*DatamoverRun, error) {
+	task, _, err := o.taskDetailsFromName(ctx, group, name)
 	if err != nil {
 		return nil, err
 	}
 
-	out := &DatamoverRun{BytesTransferred: exe.BytesTransferred,
-		BytesWritten:             exe.BytesWritten,
-		EstimatedBytesToTransfer: exe.EstimatedBytesToTransfer,
-		EstimatedFilesToTransfer: exe.EstimatedFilesToTransfer,
-		FilesTransferred:         exe.FilesTransferred,
-		StartTime:                exe.StartTime,
-		Status:                   exe.Status,
-		Result:                   exe.Result}
+	execArn := fmt.Sprintf("%s/execution/%s", aws.StringValue(task.TaskArn), id)
 
-	return out, nil
+	exec, err := o.datasyncClient.DescribeTaskExecution(ctx, execArn)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DatamoverRun{
+		BytesTransferred:         exec.BytesTransferred,
+		BytesWritten:             exec.BytesWritten,
+		EstimatedBytesToTransfer: exec.EstimatedBytesToTransfer,
+		EstimatedFilesToTransfer: exec.EstimatedFilesToTransfer,
+		FilesTransferred:         exec.FilesTransferred,
+		StartTime:                exec.StartTime,
+		Status:                   exec.Status,
+		Result:                   exec.Result,
+	}, nil
 }

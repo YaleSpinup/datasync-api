@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/YaleSpinup/apierror"
 	"github.com/gorilla/mux"
@@ -232,14 +231,12 @@ func (s *server) RunListHandler(w http.ResponseWriter, r *http.Request) {
 				"arn:aws:iam::aws:policy/ResourceGroupsandTagEditorReadOnlyAccess",
 			},
 		})
-
 	if err != nil {
 		handleError(w, errors.Wrap(err, "unable to create datasync orchestrator"))
 		return
 	}
 
-	// from move get info of all executions (runs) for a taskArn (moveId)
-	resp, err := orch.datamoverRunList(r.Context(), group, name, false)
+	resp, err := orch.datamoverRunList(r.Context(), group, name)
 	if err != nil {
 		handleError(w, err)
 		return
@@ -257,7 +254,6 @@ func (s *server) RunListHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) RunShowHandler(w http.ResponseWriter, r *http.Request) {
-
 	w = LogWriter{w}
 	vars := mux.Vars(r)
 	account := vars["account"]
@@ -276,34 +272,12 @@ func (s *server) RunShowHandler(w http.ResponseWriter, r *http.Request) {
 			},
 		},
 	)
-
 	if err != nil {
 		handleError(w, errors.Wrap(err, "unable to create datasync orchestrator"))
 		return
 	}
 
-	respAll, errAll := orch.datamoverRunList(r.Context(), group, name, true)
-
-	if errAll != nil {
-		handleError(w, err)
-		return
-	}
-	taskArn := ""
-
-	for _, ta := range respAll {
-		fmt.Println(ta, id, "Task and ID")
-		if strings.Contains(ta, id) {
-			taskArn = ta
-			break
-		}
-	}
-	if taskArn == "" {
-		handleError(w, apierror.New(apierror.ErrNotFound, "run id not found", err))
-		return
-	}
-
-	// from move get info of all executions (runs) for a taskArn (moveId)
-	resp, err := orch.datamoverRunDescribe(r.Context(), taskArn)
+	resp, err := orch.datamoverRunDescribe(r.Context(), group, name, id)
 	if err != nil {
 		handleError(w, err)
 		return

@@ -114,12 +114,15 @@ func (d *Datasync) ListDatasyncTasks(ctx context.Context) ([]string, error) {
 }
 
 func (d *Datasync) ListDatasyncTaskExecutions(ctx context.Context, taskArn string) ([]string, error) {
-	log.Info("listing datasync tasks")
+	if taskArn == "" {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
 
-	filters := &datasync.ListTaskExecutionsInput{TaskArn: &taskArn}
+	log.Info("listing datasync task executions")
+
+	filters := &datasync.ListTaskExecutionsInput{TaskArn: aws.String(taskArn)}
 
 	execs := []string{}
-
 	if err := d.Service.ListTaskExecutionsPagesWithContext(ctx,
 		filters,
 		func(page *datasync.ListTaskExecutionsOutput, lastPage bool) bool {
@@ -129,7 +132,7 @@ func (d *Datasync) ListDatasyncTaskExecutions(ctx context.Context, taskArn strin
 			return true
 		},
 		func(r *request.Request) {}); err != nil {
-		return nil, ErrCode("failed to list tasks", err)
+		return nil, ErrCode("failed to list task executions", err)
 	}
 
 	log.Debugf("listing datasync tasks execution output: %+v", execs)
@@ -137,23 +140,26 @@ func (d *Datasync) ListDatasyncTaskExecutions(ctx context.Context, taskArn strin
 	return execs, nil
 }
 
-func (d *Datasync) DescribeTaskExecution(ctx context.Context, id string) (*datasync.DescribeTaskExecutionOutput, error) {
+func (d *Datasync) DescribeTaskExecution(ctx context.Context, eArn string) (*datasync.DescribeTaskExecutionOutput, error) {
+	if eArn == "" {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
 	log.Info("describing datasync task executions")
 
-	//NO Task Arn ?? (MoveID) Kindly review
-	filters := &datasync.DescribeTaskExecutionInput{TaskExecutionArn: &id}
+	filters := &datasync.DescribeTaskExecutionInput{TaskExecutionArn: aws.String(eArn)}
 
-	exe, err := d.Service.DescribeTaskExecutionWithContext(ctx,
+	out, err := d.Service.DescribeTaskExecutionWithContext(ctx,
 		filters,
-		func(r *request.Request) {})
-
+		func(r *request.Request) {},
+	)
 	if err != nil {
 		return nil, ErrCode("failed to list tasks", err)
 	}
 
-	log.Debugf("listing datasync tasks execution output: %+v", exe)
+	log.Debugf("listing datasync tasks execution output: %+v", out)
 
-	return exe, nil
+	return out, nil
 }
 
 // CreateDatasyncLocationS3 creates S3 datasync location
