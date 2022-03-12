@@ -455,6 +455,7 @@ func (o *datasyncOrchestrator) taskDetailsFromName(ctx context.Context, group, n
 
 // datamoverRunList finds a datasync task runs  based on its group/name and returns information about it
 func (o *datasyncOrchestrator) datamoverRunList(ctx context.Context, group, name string, fullArn bool) ([]string, error) {
+
 	respL, errL := o.datamoverDescribe(ctx, group, name)
 
 	if errL != nil {
@@ -470,8 +471,14 @@ func (o *datasyncOrchestrator) datamoverRunList(ctx context.Context, group, name
 			newOut = append(newOut, v)
 		} else {
 			arrArn := strings.Split(v, "/")
-			lastPartOfARN := arrArn[len(arrArn)-1:][0]
-			newOut = append(newOut, lastPartOfARN)
+			if len(arrArn) > 0 {
+				lastPartOfARN := arrArn[len(arrArn)-1:][0]
+				newOut = append(newOut, lastPartOfARN)
+			} else {
+				newOut = append(newOut, v)
+
+			}
+
 		}
 
 	}
