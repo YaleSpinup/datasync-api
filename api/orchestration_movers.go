@@ -480,3 +480,51 @@ func (o *datasyncOrchestrator) taskDetailsFromName(ctx context.Context, group, n
 
 	return nil, nil, apierror.New(apierror.ErrNotFound, "datasync mover not found", nil)
 }
+
+// datamoverRunList returns a list of executions for a given task
+func (o *datasyncOrchestrator) datamoverRunList(ctx context.Context, group, name string) ([]string, error) {
+	task, _, err := o.taskDetailsFromName(ctx, group, name)
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := o.datasyncClient.ListDatasyncTaskExecutions(ctx, aws.StringValue(task.TaskArn))
+	if err != nil {
+		return nil, err
+	}
+
+	execs := []string{}
+	for _, v := range out {
+		parts := strings.Split(v, "/")
+		if len(parts) > 0 {
+			execs = append(execs, parts[len(parts)-1])
+		}
+	}
+
+	return execs, nil
+}
+
+func (o *datasyncOrchestrator) datamoverRunDescribe(ctx context.Context, group, name, id string) (*DatamoverRun, error) {
+	task, _, err := o.taskDetailsFromName(ctx, group, name)
+	if err != nil {
+		return nil, err
+	}
+
+	execArn := fmt.Sprintf("%s/execution/%s", aws.StringValue(task.TaskArn), id)
+
+	exec, err := o.datasyncClient.DescribeTaskExecution(ctx, execArn)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DatamoverRun{
+		BytesTransferred:         exec.BytesTransferred,
+		BytesWritten:             exec.BytesWritten,
+		EstimatedBytesToTransfer: exec.EstimatedBytesToTransfer,
+		EstimatedFilesToTransfer: exec.EstimatedFilesToTransfer,
+		FilesTransferred:         exec.FilesTransferred,
+		StartTime:                exec.StartTime,
+		Status:                   exec.Status,
+		Result:                   exec.Result,
+	}, nil
+}

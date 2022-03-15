@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/datasync"
 	"github.com/aws/aws-sdk-go/service/datasync/datasynciface"
@@ -112,6 +113,55 @@ func (d *Datasync) ListDatasyncTasks(ctx context.Context) ([]string, error) {
 	return tasks, nil
 }
 
+func (d *Datasync) ListDatasyncTaskExecutions(ctx context.Context, taskArn string) ([]string, error) {
+	if taskArn == "" {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
+	log.Info("listing datasync task executions")
+
+	filters := &datasync.ListTaskExecutionsInput{TaskArn: aws.String(taskArn)}
+
+	execs := []string{}
+	if err := d.Service.ListTaskExecutionsPagesWithContext(ctx,
+		filters,
+		func(page *datasync.ListTaskExecutionsOutput, lastPage bool) bool {
+			for _, c := range page.TaskExecutions {
+				execs = append(execs, aws.StringValue(c.TaskExecutionArn))
+			}
+			return true
+		},
+		func(r *request.Request) {}); err != nil {
+		return nil, ErrCode("failed to list task executions", err)
+	}
+
+	log.Debugf("listing datasync tasks execution output: %+v", execs)
+
+	return execs, nil
+}
+
+func (d *Datasync) DescribeTaskExecution(ctx context.Context, eArn string) (*datasync.DescribeTaskExecutionOutput, error) {
+	if eArn == "" {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
+	log.Info("describing datasync task executions")
+
+	filters := &datasync.DescribeTaskExecutionInput{TaskExecutionArn: aws.String(eArn)}
+
+	out, err := d.Service.DescribeTaskExecutionWithContext(ctx,
+		filters,
+		func(r *request.Request) {},
+	)
+	if err != nil {
+		return nil, ErrCode("failed to list tasks", err)
+	}
+
+	log.Debugf("listing datasync tasks execution output: %+v", out)
+
+	return out, nil
+}
+
 // CreateDatasyncLocationS3 creates S3 datasync location
 func (d *Datasync) CreateDatasyncLocationS3(ctx context.Context, input *datasync.CreateLocationS3Input) (*datasync.CreateLocationS3Output, error) {
 	if input == nil {
@@ -208,7 +258,7 @@ func (d *Datasync) DescribeDatasyncTask(ctx context.Context, tArn string) (*data
 
 	out, err := d.Service.DescribeTaskWithContext(ctx, &datasync.DescribeTaskInput{
 		TaskArn: aws.String(tArn),
-	})
+	}, func(r *request.Request) {})
 	if err != nil {
 		return nil, ErrCode("failed to describe task", err)
 	}

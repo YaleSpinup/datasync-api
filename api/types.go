@@ -1,6 +1,10 @@
 package api
 
-import "github.com/aws/aws-sdk-go/service/datasync"
+import (
+	"time"
+
+	"github.com/aws/aws-sdk-go/service/datasync"
+)
 
 // DatamoverCreateRequest is data used to create a DataSync mover
 type DatamoverCreateRequest struct {
@@ -62,4 +66,15 @@ type DatamoverLocationOutput struct {
 	EFS  *datasync.DescribeLocationEfsOutput `json:",omitempty"`
 	SMB  *datasync.DescribeLocationSmbOutput `json:",omitempty"`
 	NFS  *datasync.DescribeLocationNfsOutput `json:",omitempty"`
+}
+
+type DatamoverRun struct {
+	BytesTransferred         *int64
+	BytesWritten             *int64
+	EstimatedBytesToTransfer *int64
+	EstimatedFilesToTransfer *int64
+	FilesTransferred         *int64
+	StartTime                *time.Time
+	Status                   *string
+	Result                   *datasync.TaskExecutionResultDetail
 }
