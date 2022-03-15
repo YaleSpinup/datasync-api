@@ -368,6 +368,7 @@ func (d *Datasync) GetDatasyncTags(ctx context.Context, tArn string) ([]*datasyn
 	return out.Tags, err
 }
 
+// StartTaskExecution starts the execution and returns the taskexecution ARN
 func (d *Datasync) StartTaskExecution(ctx context.Context, taskArn string) (*datasync.StartTaskExecutionOutput, error) {
 	if taskArn == "" {
 		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)

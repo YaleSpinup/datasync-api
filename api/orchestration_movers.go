@@ -501,8 +501,9 @@ func (o *datasyncOrchestrator) datamoverRunDescribe(ctx context.Context, group, 
 	}, nil
 }
 
-// datamoverRunList returns a list of executions for a given task
+// startTaskRun starts the execution for a given task
 func (o *datasyncOrchestrator) startTaskRun(ctx context.Context, group, name string) (*datasync.StartTaskExecutionOutput, error) {
+
 	task, _, err := o.taskDetailsFromName(ctx, group, name)
 	if err != nil {
 		return nil, err
