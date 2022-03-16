@@ -293,3 +293,42 @@ func (s *server) RunShowHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(j)
 }
+
+func (s *server) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
+	w = LogWriter{w}
+	vars := mux.Vars(r)
+	account := vars["account"]
+	group := vars["group"]
+	name := vars["name"]
+
+	orch, err := s.newDatasyncOrchestrator(
+		r.Context(),
+		account,
+		&sessionParams{
+			role: fmt.Sprintf("arn:aws:iam::%s:role/%s", account, s.session.RoleName),
+			policyArns: []string{
+				"arn:aws:iam::aws:policy/AWSDataSyncReadOnlyAccess",
+				"arn:aws:iam::aws:policy/ResourceGroupsandTagEditorReadOnlyAccess",
+			},
+		})
+	if err != nil {
+		handleError(w, errors.Wrap(err, "unable to create datasync orchestrator"))
+		return
+	}
+
+	resp, err := orch.startTaskRun(r.Context(), group, name)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	j, err := json.Marshal(resp)
+	if err != nil {
+		handleError(w, apierror.New(apierror.ErrInternalError, "failed to marshal json", err))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(j)
+}

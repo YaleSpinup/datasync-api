@@ -528,3 +528,19 @@ func (o *datasyncOrchestrator) datamoverRunDescribe(ctx context.Context, group, 
 		Result:                   exec.Result,
 	}, nil
 }
+
+// startTaskRun starts the execution for a given task
+func (o *datasyncOrchestrator) startTaskRun(ctx context.Context, group, name string) (*datasync.StartTaskExecutionOutput, error) {
+
+	task, _, err := o.taskDetailsFromName(ctx, group, name)
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := o.datasyncClient.StartTaskExecution(ctx, aws.StringValue(task.TaskArn))
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}

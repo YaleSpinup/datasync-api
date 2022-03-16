@@ -367,3 +367,26 @@ func (d *Datasync) GetDatasyncTags(ctx context.Context, tArn string) ([]*datasyn
 
 	return out.Tags, err
 }
+
+// StartTaskExecution starts the execution and returns the taskexecution ARN
+func (d *Datasync) StartTaskExecution(ctx context.Context, taskArn string) (*datasync.StartTaskExecutionOutput, error) {
+	if taskArn == "" {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
+	log.Info("starting datasync task executions")
+
+	filters := &datasync.StartTaskExecutionInput{TaskArn: &taskArn}
+
+	out, err := d.Service.StartTaskExecutionWithContext(ctx,
+		filters,
+		func(r *request.Request) {})
+
+	if err != nil {
+		return nil, ErrCode("failed to start task executions", err)
+	}
+
+	log.Debugf("listing datasync tasks execution output: %+v", out)
+
+	return out, nil
+}
