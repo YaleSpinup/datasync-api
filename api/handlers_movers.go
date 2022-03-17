@@ -314,6 +314,7 @@ func (s *server) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 			role: fmt.Sprintf("arn:aws:iam::%s:role/%s", account, s.session.RoleName),
 			policyArns: []string{
 				"arn:aws:iam::aws:policy/AWSDataSyncFullAccess",
+				"arn:aws:iam::aws:policy/ResourceGroupsandTagEditorReadOnlyAccess",
 			},
 			inlinePolicy: policy,
 		},
