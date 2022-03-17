@@ -516,3 +516,19 @@ func (o *datasyncOrchestrator) startTaskRun(ctx context.Context, group, name str
 
 	return out, nil
 }
+
+// stopTaskRun starts the execution for a given task
+func (o *datasyncOrchestrator) stopTaskRun(ctx context.Context, group, name string) (*datasync.CancelTaskExecutionOutput, error) {
+
+	task, _, err := o.taskDetailsFromName(ctx, group, name)
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := o.datasyncClient.StopTaskExecution(ctx, aws.StringValue(task.CurrentTaskExecutionArn))
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
