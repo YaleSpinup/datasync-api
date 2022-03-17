@@ -301,16 +301,23 @@ func (s *server) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 	group := vars["group"]
 	name := vars["name"]
 
+	policy, err := s.moverCreatePolicy()
+	if err != nil {
+		handleError(w, apierror.New(apierror.ErrInternalError, "failed to generate policy", err))
+		return
+	}
+
 	orch, err := s.newDatasyncOrchestrator(
 		r.Context(),
 		account,
 		&sessionParams{
 			role: fmt.Sprintf("arn:aws:iam::%s:role/%s", account, s.session.RoleName),
 			policyArns: []string{
-				"arn:aws:iam::aws:policy/AWSDataSyncReadOnlyAccess",
-				"arn:aws:iam::aws:policy/ResourceGroupsandTagEditorReadOnlyAccess",
+				"arn:aws:iam::aws:policy/AWSDataSyncFullAccess",
 			},
-		})
+			inlinePolicy: policy,
+		},
+	)
 	if err != nil {
 		handleError(w, errors.Wrap(err, "unable to create datasync orchestrator"))
 		return
