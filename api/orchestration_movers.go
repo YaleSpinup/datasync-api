@@ -536,13 +536,15 @@ func (o *datasyncOrchestrator) startTaskRun(ctx context.Context, group, name str
 	if err != nil {
 		return nil, err
 	}
+	if *task.Status == "AVAILABLE" {
+		out, err := o.datasyncClient.StartTaskExecution(ctx, aws.StringValue(task.TaskArn))
+		if err != nil {
+			return nil, err
+		}
 
-	out, err := o.datasyncClient.StartTaskExecution(ctx, aws.StringValue(task.TaskArn))
-	if err != nil {
-		return nil, err
+		return out, nil
 	}
-
-	return out, nil
+	return nil, apierror.New(apierror.ErrConflict, "datasync mover task is already running", nil)
 }
 
 // stopTaskRun starts the execution for a given task
@@ -552,11 +554,13 @@ func (o *datasyncOrchestrator) stopTaskRun(ctx context.Context, group, name stri
 	if err != nil {
 		return nil, err
 	}
+	if *task.Status == "RUNNING" {
+		out, err := o.datasyncClient.StopTaskExecution(ctx, aws.StringValue(task.CurrentTaskExecutionArn))
+		if err != nil {
+			return nil, err
+		}
+		return out, nil
 
-	out, err := o.datasyncClient.StopTaskExecution(ctx, aws.StringValue(task.CurrentTaskExecutionArn))
-	if err != nil {
-		return nil, err
 	}
-
-	return out, nil
+	return nil, apierror.New(apierror.ErrNotFound, "datasync mover task is not running", nil)
 }
