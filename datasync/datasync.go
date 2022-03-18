@@ -390,3 +390,26 @@ func (d *Datasync) StartTaskExecution(ctx context.Context, taskArn string) (*dat
 
 	return out, nil
 }
+
+// StopTaskExecution Stop the execution and returns the taskexecution ARN
+func (d *Datasync) StopTaskExecution(ctx context.Context, taskArn string) (*datasync.CancelTaskExecutionOutput, error) {
+	if taskArn == "" {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
+	log.Info("starting datasync task executions")
+
+	filters := &datasync.CancelTaskExecutionInput{TaskExecutionArn: &taskArn}
+
+	out, err := d.Service.CancelTaskExecutionWithContext(ctx,
+		filters,
+		func(r *request.Request) {})
+
+	if err != nil {
+		return nil, ErrCode("failed to start task executions", err)
+	}
+
+	log.Debugf("listing datasync tasks execution output: %+v", out)
+
+	return out, nil
+}
