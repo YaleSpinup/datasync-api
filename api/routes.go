@@ -39,7 +39,7 @@ func (s *server) routes() {
 	// api.HandleFunc("/{account}/movers/{group}/{name}", s.MoverUpdateHandler).Methods(http.MethodPut)
 
 	api.HandleFunc("/{account}/movers/{group}/{name}/start", s.StartTaskHandler).Methods(http.MethodPost)
-	api.HandleFunc("/{account}/movers/{group}/{name}/stop", s.StopTaskHandler).Methods(http.MethodPost)
+	api.HandleFunc("/{account}/movers/{group}/{name}/stop", s.StopTaskHandler).Methods(http.MethodPut)
 
 	api.HandleFunc("/{account}/movers/{group}/{name}/runs", s.RunListHandler).Methods(http.MethodGet)
 	api.HandleFunc("/{account}/movers/{group}/{name}/runs/{id}", s.RunShowHandler).Methods(http.MethodGet)
