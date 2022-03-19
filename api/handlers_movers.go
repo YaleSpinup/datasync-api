@@ -301,12 +301,6 @@ func (s *server) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 	group := vars["group"]
 	name := vars["name"]
 
-	//policy, err := s.moverCreatePolicy()
-	//if err != nil {
-	//	handleError(w, apierror.New(apierror.ErrInternalError, "failed to generate policy", err))
-	//	return
-	//}
-
 	orch, err := s.newDatasyncOrchestrator(
 		r.Context(),
 		account,
@@ -315,9 +309,7 @@ func (s *server) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 			policyArns: []string{
 				"arn:aws:iam::aws:policy/AWSDataSyncFullAccess",
 				"arn:aws:iam::aws:policy/ResourceGroupsandTagEditorReadOnlyAccess",
-			},
-			//inlinePolicy: policy,
-		},
+			}},
 	)
 	if err != nil {
 		handleError(w, errors.Wrap(err, "unable to create datasync orchestrator"))
@@ -348,12 +340,6 @@ func (s *server) StopTaskHandler(w http.ResponseWriter, r *http.Request) {
 	group := vars["group"]
 	name := vars["name"]
 
-	policy, err := s.moverCreatePolicy()
-	if err != nil {
-		handleError(w, apierror.New(apierror.ErrInternalError, "failed to generate policy", err))
-		return
-	}
-
 	orch, err := s.newDatasyncOrchestrator(
 		r.Context(),
 		account,
@@ -362,9 +348,7 @@ func (s *server) StopTaskHandler(w http.ResponseWriter, r *http.Request) {
 			policyArns: []string{
 				"arn:aws:iam::aws:policy/AWSDataSyncFullAccess",
 				"arn:aws:iam::aws:policy/ResourceGroupsandTagEditorReadOnlyAccess",
-			},
-			inlinePolicy: policy,
-		},
+			}},
 	)
 	if err != nil {
 		handleError(w, errors.Wrap(err, "unable to create datasync orchestrator"))
