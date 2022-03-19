@@ -12,7 +12,7 @@ GET /v1/test/metrics
 GET    /v1/datasync/{account}/movers
 POST   /v1/datasync/{account}/movers/{group}
 GET    /v1/datasync/{account}/movers/{group}
-GET    /v1/datasync/{account}/movers/{group}/{id}
+DELETE /v1/datasync/{account}/movers/{group}/{id}
 POST   /v1/datasync/{account}/movers/{group}/{name}/{start}
 GET	   /v1/datasync/{account}/movers/{group}/{name}/{runs}
 GET	   /v1/datasync/{account}/movers/{group}/{name}/runs/{id}

@@ -301,11 +301,11 @@ func (s *server) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 	group := vars["group"]
 	name := vars["name"]
 
-	policy, err := s.moverCreatePolicy()
-	if err != nil {
-		handleError(w, apierror.New(apierror.ErrInternalError, "failed to generate policy", err))
-		return
-	}
+	//policy, err := s.moverCreatePolicy()
+	//if err != nil {
+	//	handleError(w, apierror.New(apierror.ErrInternalError, "failed to generate policy", err))
+	//	return
+	//}
 
 	orch, err := s.newDatasyncOrchestrator(
 		r.Context(),
@@ -316,7 +316,7 @@ func (s *server) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 				"arn:aws:iam::aws:policy/AWSDataSyncFullAccess",
 				"arn:aws:iam::aws:policy/ResourceGroupsandTagEditorReadOnlyAccess",
 			},
-			inlinePolicy: policy,
+			//inlinePolicy: policy,
 		},
 	)
 	if err != nil {
@@ -386,4 +386,20 @@ func (s *server) StopTaskHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(j)
+}
+
+func (s *server) StartStopTaskHandler(w http.ResponseWriter, r *http.Request) {
+	req := DatamoverAction{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		msg := fmt.Sprintf("cannot decode body into create data mover input: %s", err)
+		handleError(w, apierror.New(apierror.ErrBadRequest, msg, err))
+		return
+	}
+
+	if *req.State == "start" {
+		s.StartTaskHandler(w, r)
+	} else {
+		s.StopTaskHandler(w, r)
+	}
+
 }
