@@ -413,3 +413,21 @@ func (d *Datasync) StopTaskExecution(ctx context.Context, taskArn string) (*data
 
 	return out, nil
 }
+
+// UpdateDatasyncTask creates a datasync task
+func (d *Datasync) UpdateDatasyncTask(ctx context.Context, input *datasync.UpdateTaskInput) (*datasync.UpdateTaskOutput, error) {
+	if input == nil {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
+	log.Infof("creating task %s", aws.StringValue(input.Name))
+
+	out, err := d.Service.UpdateTaskWithContext(ctx, input)
+	if err != nil {
+		return nil, ErrCode("failed to create task", err)
+	}
+
+	log.Debugf("creating task output: %+v", out)
+
+	return out, nil
+}

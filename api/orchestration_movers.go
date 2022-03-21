@@ -569,3 +569,104 @@ func (o *datasyncOrchestrator) stopTaskRun(ctx context.Context, group, name stri
 	}
 	return nil, apierror.New(apierror.ErrNotFound, "datasync mover task is not running", nil)
 }
+
+// datamoverUpdate creates a data mover and returns the task id of the async Flywheel task
+// consisting of a task, source and destination locations
+func (o *datasyncOrchestrator) datamoverUpdate(ctx context.Context, group, id string, req *DatamoverUpdateRequest) (*flywheel.Task, error) {
+	log.Infof("creating data mover %s with source %s and destination %s", aws.StringValue(req.Name), req.Source.Type, req.Destination.Type)
+
+	req.Tags = req.Tags.normalize(o.server.org, group)
+
+	task := flywheel.NewTask()
+
+	// start async orchestration to create all components of the data mover
+	go func() {
+		taskCtx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		msgChan, errChan := o.startTask(taskCtx, task)
+
+		// setup err var, rollback function list and defer execution
+		// do not shadow err below for rollback to work properly
+		var err error
+		var rollBackTasks []rollbackFunc
+		defer func() {
+			if err != nil {
+				log.Errorf("recovering from error: %s, executing %d rollback tasks", err, len(rollBackTasks))
+				rollBack(&rollBackTasks)
+			}
+		}()
+
+		var srcLocationArn, dstLocationArn string
+
+		msgChan <- "requested creation of source location"
+		srcLocationArn, err = o.createDatasyncLocation(taskCtx, aws.StringValue(req.Name), group, req.Source, req.Tags)
+		if err != nil {
+			errChan <- fmt.Errorf("failed to create source location: %s", err.Error())
+			return
+		}
+
+		rollBackTasks = append(rollBackTasks, func(ctx context.Context) error {
+			log.Errorf("rollback: deleting source location: %s", srcLocationArn)
+
+			if err := o.deleteDatasyncLocation(ctx, aws.StringValue(req.Name), srcLocationArn, req.Source.Type); err != nil {
+				log.Warnf("rollback: error deleting location: %s", err)
+				return err
+			}
+
+			return nil
+		})
+
+		msgChan <- "requested creation of destination location"
+		dstLocationArn, err = o.createDatasyncLocation(taskCtx, aws.StringValue(req.Name), group, req.Destination, req.Tags)
+		if err != nil {
+			errChan <- fmt.Errorf("failed to create destination location: %s", err.Error())
+			return
+		}
+
+		rollBackTasks = append(rollBackTasks, func(ctx context.Context) error {
+			log.Errorf("rollback: deleting destination location: %s", dstLocationArn)
+
+			if err := o.deleteDatasyncLocation(ctx, aws.StringValue(req.Name), dstLocationArn, req.Destination.Type); err != nil {
+				log.Warnf("rollback: error deleting location: %s", err)
+				return err
+			}
+
+			return nil
+		})
+
+		var t *datasync.UpdateTaskOutput
+
+		msgChan <- fmt.Sprintf("requested creation of datasync task %s", aws.StringValue(req.Name))
+		t, err = o.datasyncClient.UpdateDatasyncTask(taskCtx, &datasync.UpdateTaskInput{
+			//DestinationLocationArn: aws.String(dstLocationArn),
+			Name: req.Name,
+			//SourceLocationArn:      aws.String(srcLocationArn),
+			// Options: &datasync.Options{
+			// 	// eventually we may allow for customizing these
+			// 	PreserveDeletedFiles: aws.String("PRESERVE"),
+			// 	TransferMode:         aws.String("CHANGED"),
+			// 	VerifyMode:           aws.String("ONLY_FILES_TRANSFERRED"),
+			// },
+			//Tags: req.Tags.toDatasyncTags(),
+		})
+		if err != nil {
+			errChan <- fmt.Errorf("failed to create datasync task: %s", err.Error())
+			return
+		}
+
+		//For now to aviod error ...
+		fmt.Println(t)
+		a, _ := arn.Parse(aws.StringValue(&id))
+		parts := strings.SplitN(a.Resource, "/", 2)
+		if len(parts) < 2 {
+			errChan <- fmt.Errorf("failed to parse datasync task id %s", aws.StringValue(&id))
+			return
+		}
+		id := parts[1]
+
+		msgChan <- fmt.Sprintf("updated data mover '%s': %s", aws.StringValue(req.Name), id)
+	}()
+
+	return task, nil
+}

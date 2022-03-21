@@ -387,3 +387,69 @@ func (s *server) StartStopTaskHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+
+// MoverUpdateHandler creates a new Datasync mover
+func (s *server) MoverUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	w = LogWriter{w}
+	vars := mux.Vars(r)
+	account := vars["account"]
+	group := vars["group"]
+	id := vars["id"]
+
+	// read the input against our struct in api/types.go
+	req := DatamoverUpdateRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		msg := fmt.Sprintf("cannot decode body into create data mover input: %s", err)
+		handleError(w, apierror.New(apierror.ErrBadRequest, msg, err))
+		return
+	}
+
+	if req.Name == nil {
+		handleError(w, apierror.New(apierror.ErrBadRequest, "Name is a required field", nil))
+		return
+	}
+
+	regexName := "^[a-zA-Z0-9-]+$"
+	re := regexp.MustCompile(regexName)
+	if !re.MatchString(*req.Name) {
+		handleError(w, apierror.New(apierror.ErrBadRequest, "Name doesn't match regex "+regexName, nil))
+		return
+	}
+
+	if req.Source == nil || req.Destination == nil || req.Source.Type == "" || req.Destination.Type == "" {
+		handleError(w, apierror.New(apierror.ErrBadRequest, "Source and Destination are required", nil))
+		return
+	}
+
+	policy, err := s.moverUpdatePolicy()
+	if err != nil {
+		handleError(w, apierror.New(apierror.ErrInternalError, "failed to generate policy", err))
+		return
+	}
+
+	orch, err := s.newDatasyncOrchestrator(
+		r.Context(),
+		account,
+		&sessionParams{
+			role: fmt.Sprintf("arn:aws:iam::%s:role/%s", account, s.session.RoleName),
+			policyArns: []string{
+				"arn:aws:iam::aws:policy/AWSDataSyncFullAccess",
+			},
+			inlinePolicy: policy,
+		},
+	)
+	if err != nil {
+		handleError(w, errors.Wrap(err, "unable to create datasync orchestrator"))
+		return
+	}
+
+	task, err := orch.datamoverUpdate(r.Context(), group, id, &req)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Flywheel-Task", task.ID)
+	w.WriteHeader(http.StatusAccepted)
+}

@@ -14,6 +14,14 @@ type DatamoverCreateRequest struct {
 	Tags        Tags
 }
 
+// DatamoverUpdateRequest is data used to create a DataSync mover
+type DatamoverUpdateRequest struct {
+	Name        *string
+	Source      *DatamoverLocationInput
+	Destination *DatamoverLocationInput
+	Tags        Tags
+}
+
 // DatamoverLocationInput is an abstraction for the different location type inputs
 // currently only S3 and EFS are supported
 type DatamoverLocationInput struct {

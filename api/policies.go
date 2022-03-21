@@ -53,6 +53,52 @@ func (s *server) moverCreatePolicy() (string, error) {
 	return string(j), nil
 }
 
+// moverUpdatePolicy returns the IAM inline policy for creating a mover
+func (s *server) moverUpdatePolicy() (string, error) {
+	policy := &iam.PolicyDocument{
+		Version: "2012-10-17",
+		Statement: []iam.StatementEntry{
+			{
+				Sid:    "UpdateRole",
+				Effect: "Allow",
+				Action: []string{
+					"iam:UpdateRole",
+					"iam:GetRole",
+					"iam:GetRolePolicy",
+					"iam:ListAttachedRolePolicies",
+					"iam:ListRolePolicies",
+					"iam:AttachRolePolicy",
+					"iam:PutRolePolicy",
+					"iam:TagRole",
+					"iam:UntagRole",
+				},
+				Resource: []string{
+					fmt.Sprintf("arn:aws:iam::*:role/spinup/%s/*", s.org),
+				},
+			},
+			{
+				Sid:    "DeleteRole",
+				Effect: "Allow",
+				Action: []string{
+					"iam:DeleteRole",
+					"iam:DetachRolePolicy",
+					"iam:DeleteRolePolicy",
+				},
+				Resource: []string{
+					fmt.Sprintf("arn:aws:iam::*:role/spinup/%s/*", s.org),
+				},
+			},
+		},
+	}
+
+	j, err := json.Marshal(policy)
+	if err != nil {
+		return "", err
+	}
+
+	return string(j), nil
+}
+
 // moverDeletePolicy returns the IAM inline policy for deleting a mover
 func (s *server) moverDeletePolicy() (string, error) {
 	policy := &iam.PolicyDocument{
