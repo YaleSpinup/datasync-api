@@ -38,9 +38,7 @@ func (s *server) routes() {
 	api.HandleFunc("/{account}/movers/{group}/{name}", s.MoverDeleteHandler).Methods(http.MethodDelete)
 	// api.HandleFunc("/{account}/movers/{group}/{name}/{id}", s.MoverUpdateHandler).Methods(http.MethodPut)
 
-	api.HandleFunc("/{account}/movers/{group}/{name}/runs", s.StartTaskHandler).Methods(http.MethodPost)
-	api.HandleFunc("/{account}/movers/{group}/{name}/runs", s.StopTaskHandler).Methods(http.MethodPut)
-	api.HandleFunc("/{account}/movers/{group}/{name}/startStop", s.StartStopTaskHandler).Methods(http.MethodPut)
+	api.HandleFunc("/{account}/movers/{group}/{name}/runs", s.MoverUpdateHandler).Methods(http.MethodPut)
 
 	api.HandleFunc("/{account}/movers/{group}/{name}/runs", s.RunListHandler).Methods(http.MethodGet)
 	api.HandleFunc("/{account}/movers/{group}/{name}/runs/{id}", s.RunShowHandler).Methods(http.MethodGet)

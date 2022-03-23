@@ -549,7 +549,7 @@ func (o *datasyncOrchestrator) startTaskRun(ctx context.Context, group, name str
 
 		return out, nil
 	}
-	return nil, apierror.New(apierror.ErrNotFound, "another datasync mover task is already running", nil)
+	return nil, apierror.New(apierror.ErrConflict, "another datasync mover task is already running", nil)
 }
 
 // stopTaskRun starts the execution for a given task
@@ -567,5 +567,5 @@ func (o *datasyncOrchestrator) stopTaskRun(ctx context.Context, group, name stri
 		return out, nil
 
 	}
-	return nil, apierror.New(apierror.ErrNotFound, "datasync mover task is not running", nil)
+	return nil, apierror.New(apierror.ErrConflict, "datasync mover task is not running", nil)
 }

@@ -376,7 +376,7 @@ func (d *Datasync) StartTaskExecution(ctx context.Context, taskArn string) (*dat
 
 	log.Info("starting datasync task executions")
 
-	filters := &datasync.StartTaskExecutionInput{TaskArn: &taskArn}
+	filters := &datasync.StartTaskExecutionInput{TaskArn: aws.String(taskArn)}
 
 	out, err := d.Service.StartTaskExecutionWithContext(ctx,
 		filters,
@@ -397,16 +397,16 @@ func (d *Datasync) StopTaskExecution(ctx context.Context, taskArn string) (*data
 		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
 	}
 
-	log.Info("starting datasync task executions")
+	log.Info("Stopping datasync task executions")
 
-	filters := &datasync.CancelTaskExecutionInput{TaskExecutionArn: &taskArn}
+	filters := &datasync.CancelTaskExecutionInput{TaskExecutionArn: aws.String(taskArn)}
 
 	out, err := d.Service.CancelTaskExecutionWithContext(ctx,
 		filters,
 		func(r *request.Request) {})
 
 	if err != nil {
-		return nil, ErrCode("failed to start task executions", err)
+		return nil, ErrCode("failed to stop task executions", err)
 	}
 
 	log.Debugf("listing datasync tasks execution output: %+v", out)

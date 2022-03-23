@@ -372,8 +372,8 @@ func (s *server) StopTaskHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(j)
 }
 
-func (s *server) StartStopTaskHandler(w http.ResponseWriter, r *http.Request) {
-	req := DatamoverAction{}
+func (s *server) MoverUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	req := MoverUpdateAction{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		msg := fmt.Sprintf("cannot decode body into create data mover input: %s", err)
 		handleError(w, apierror.New(apierror.ErrBadRequest, msg, err))
@@ -382,7 +382,7 @@ func (s *server) StartStopTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	if *req.State == "start" {
 		s.StartTaskHandler(w, r)
-	} else {
+	} else if *req.State == "stop" {
 		s.StopTaskHandler(w, r)
 	}
 
