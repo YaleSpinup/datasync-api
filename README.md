@@ -251,9 +251,9 @@ DELETE `/v1/datasync/{account}/movers/{group}/{name}`
 | **404 Not Found**             | account not found               |
 | **500 Internal Server Error** | a server error occurred         |
 
-### Run a Data Mover Task
+### Run/Stop a Data Mover Task
 
-POST `/v1/datasync/{account}/movers/{group}/{name}/{start}`
+PUT `/v1/datasync/{account}/movers/{group}/{name}/runs`
 
 | Response Code                 | Definition                      |
 | ----------------------------- | --------------------------------|
@@ -272,7 +272,7 @@ POST `/v1/datasync/{account}/movers/{group}/{name}/{start}`
 
 ### List All Data Mover Runs
 
-GET `/v1/datasync/{account}/movers/{group}/{name}/{runs}`
+GET `/v1/datasync/{account}/movers/{group}/{name}/runs`
 
 | Response Code                 | Definition                      |
 | ----------------------------- | --------------------------------|
@@ -299,7 +299,7 @@ GET `/v1/datasync/{account}/movers/{group}/{name}/{runs}`
 
 ### Get Information about a Data Mover Run
 
-GET `/v1/datasync/{account}/movers/{group}/{name}/{runs}/{id}`
+GET `/v1/datasync/{account}/movers/{group}/{name}/runs/{id}`
 
 | Response Code                 | Definition                      |
 | ----------------------------- | --------------------------------|
