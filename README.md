@@ -253,7 +253,7 @@ DELETE `/v1/datasync/{account}/movers/{group}/{name}`
 
 ### Run/Stop a Data Mover Task
 
-PUT `/v1/datasync/{account}/movers/{group}/{name}/runs`
+PUT `/v1/datasync/{account}/movers/{group}/{name}`
 
 | Response Code                 | Definition                      |
 | ----------------------------- | --------------------------------|
