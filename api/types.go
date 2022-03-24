@@ -78,3 +78,6 @@ type DatamoverRun struct {
 	Status                   *string
 	Result                   *datasync.TaskExecutionResultDetail
 }
+type MoverUpdateAction struct {
+	State *string
+}

@@ -367,3 +367,47 @@ func (d *Datasync) GetDatasyncTags(ctx context.Context, tArn string) ([]*datasyn
 
 	return out.Tags, err
 }
+
+// StartTaskExecution starts the execution and returns the taskexecution ARN
+func (d *Datasync) StartTaskExecution(ctx context.Context, taskArn string) (*datasync.StartTaskExecutionOutput, error) {
+	if taskArn == "" {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
+	log.Info("starting datasync task execution")
+
+	filters := &datasync.StartTaskExecutionInput{TaskArn: aws.String(taskArn)}
+
+	out, err := d.Service.StartTaskExecutionWithContext(ctx,
+		filters,
+		func(r *request.Request) {})
+	if err != nil {
+		return nil, ErrCode("failed to start task execution", err)
+	}
+
+	log.Debugf("listing datasync task start execution output: %+v", out)
+
+	return out, nil
+}
+
+// StopTaskExecution stops the execution and returns the taskexecution ARN
+func (d *Datasync) StopTaskExecution(ctx context.Context, taskArn string) error {
+	if taskArn == "" {
+		return apierror.New(apierror.ErrBadRequest, "invalid input", nil)
+	}
+
+	log.Info("stopping datasync task execution")
+
+	filters := &datasync.CancelTaskExecutionInput{TaskExecutionArn: aws.String(taskArn)}
+
+	out, err := d.Service.CancelTaskExecutionWithContext(ctx,
+		filters,
+		func(r *request.Request) {})
+	if err != nil {
+		return ErrCode("failed to stop task execution", err)
+	}
+
+	log.Debugf("listing datasync task stop execution output: %+v", out)
+
+	return nil
+}

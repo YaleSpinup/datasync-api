@@ -214,6 +214,97 @@ func (s *server) MoverShowHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(j)
 }
 
+func (s *server) MoverUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	req := MoverUpdateAction{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		msg := fmt.Sprintf("cannot decode body into update data mover input: %s", err)
+		handleError(w, apierror.New(apierror.ErrBadRequest, msg, err))
+		return
+	}
+
+	if req.State == nil {
+		handleError(w, apierror.New(apierror.ErrBadRequest, "missing required parameter: State", nil))
+	}
+
+	if *req.State == "start" {
+		s.StartTaskHandler(w, r)
+	} else if *req.State == "stop" {
+		s.StopTaskHandler(w, r)
+	} else {
+		handleError(w, apierror.New(apierror.ErrBadRequest, "valid states are 'start' and 'stop'", nil))
+	}
+}
+
+func (s *server) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
+	w = LogWriter{w}
+	vars := mux.Vars(r)
+	account := vars["account"]
+	group := vars["group"]
+	name := vars["name"]
+
+	orch, err := s.newDatasyncOrchestrator(
+		r.Context(),
+		account,
+		&sessionParams{
+			role: fmt.Sprintf("arn:aws:iam::%s:role/%s", account, s.session.RoleName),
+			policyArns: []string{
+				"arn:aws:iam::aws:policy/AWSDataSyncFullAccess",
+				"arn:aws:iam::aws:policy/ResourceGroupsandTagEditorReadOnlyAccess",
+			}},
+	)
+	if err != nil {
+		handleError(w, errors.Wrap(err, "unable to create datasync orchestrator"))
+		return
+	}
+
+	resp, err := orch.startTaskRun(r.Context(), group, name)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	j, err := json.Marshal(resp)
+	if err != nil {
+		handleError(w, apierror.New(apierror.ErrInternalError, "failed to marshal json", err))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(j)
+}
+
+func (s *server) StopTaskHandler(w http.ResponseWriter, r *http.Request) {
+	w = LogWriter{w}
+	vars := mux.Vars(r)
+	account := vars["account"]
+	group := vars["group"]
+	name := vars["name"]
+
+	orch, err := s.newDatasyncOrchestrator(
+		r.Context(),
+		account,
+		&sessionParams{
+			role: fmt.Sprintf("arn:aws:iam::%s:role/%s", account, s.session.RoleName),
+			policyArns: []string{
+				"arn:aws:iam::aws:policy/AWSDataSyncFullAccess",
+				"arn:aws:iam::aws:policy/ResourceGroupsandTagEditorReadOnlyAccess",
+			}},
+	)
+	if err != nil {
+		handleError(w, errors.Wrap(err, "unable to create datasync orchestrator"))
+		return
+	}
+
+	err = orch.stopTaskRun(r.Context(), group, name)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *server) RunListHandler(w http.ResponseWriter, r *http.Request) {
 	w = LogWriter{w}
 	vars := mux.Vars(r)
