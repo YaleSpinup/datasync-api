@@ -530,42 +530,41 @@ func (o *datasyncOrchestrator) datamoverRunDescribe(ctx context.Context, group, 
 }
 
 // startTaskRun starts the execution for a given task
-func (o *datasyncOrchestrator) startTaskRun(ctx context.Context, group, name string) (*datasync.StartTaskExecutionOutput, error) {
+func (o *datasyncOrchestrator) startTaskRun(ctx context.Context, group, name string) (string, error) {
 
 	task, _, err := o.taskDetailsFromName(ctx, group, name)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	if *task.Status == "AVAILABLE" {
+	if aws.StringValue(task.Status) == "AVAILABLE" {
 		out, err := o.datasyncClient.StartTaskExecution(ctx, aws.StringValue(task.TaskArn))
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 
 		arn := out.TaskExecutionArn
 		parts := strings.Split(*arn, "/")
-		arn = &parts[len(parts)-1]
-		out.TaskExecutionArn = arn
+		id := parts[len(parts)-1]
 
-		return out, nil
+		return id, nil
 	}
-	return nil, apierror.New(apierror.ErrConflict, "another datasync mover task is already running", nil)
+	return "", apierror.New(apierror.ErrConflict, "another datasync mover task is already running", nil)
 }
 
 // stopTaskRun starts the execution for a given task
-func (o *datasyncOrchestrator) stopTaskRun(ctx context.Context, group, name string) (*datasync.CancelTaskExecutionOutput, error) {
+func (o *datasyncOrchestrator) stopTaskRun(ctx context.Context, group, name string) error {
 
 	task, _, err := o.taskDetailsFromName(ctx, group, name)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if *task.Status == "RUNNING" {
-		out, err := o.datasyncClient.StopTaskExecution(ctx, aws.StringValue(task.CurrentTaskExecutionArn))
+	if aws.StringValue(task.Status) == "RUNNING" {
+		err := o.datasyncClient.StopTaskExecution(ctx, aws.StringValue(task.CurrentTaskExecutionArn))
 		if err != nil {
-			return nil, err
+			return err
 		}
-		return out, nil
+		return nil
 
 	}
-	return nil, apierror.New(apierror.ErrConflict, "datasync mover task is not running", nil)
+	return apierror.New(apierror.ErrConflict, "datasync mover task is not running", nil)
 }

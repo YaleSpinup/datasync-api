@@ -355,21 +355,14 @@ func (s *server) StopTaskHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := orch.stopTaskRun(r.Context(), group, name)
-	if err != nil {
-		handleError(w, err)
+	errl := orch.stopTaskRun(r.Context(), group, name)
+	if errl != nil {
+		handleError(w, errl)
 		return
 	}
 
-	j, err := json.Marshal(resp)
-	if err != nil {
-		handleError(w, apierror.New(apierror.ErrInternalError, "failed to marshal json", err))
-		return
-	}
+	w.WriteHeader(http.StatusNoContent)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(j)
 }
 
 func (s *server) MoverUpdateHandler(w http.ResponseWriter, r *http.Request) {
@@ -384,6 +377,8 @@ func (s *server) MoverUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		s.StartTaskHandler(w, r)
 	} else if *req.State == "stop" {
 		s.StopTaskHandler(w, r)
+	} else {
+		handleError(w, apierror.New(apierror.ErrBadRequest, "only options allowed is start and stop", nil))
 	}
 
 }

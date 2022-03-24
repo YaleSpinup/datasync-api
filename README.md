@@ -266,7 +266,7 @@ POST `/v1/datasync/{account}/movers/{group}/{name}/{start}`
 
 ```json
 [
-    "TaskExecutionArn": "arn:aws:datasync:us-east-1:516855177326:task/task-05cd6f77d7b5d15ac/execution/exec-086d6c629a6bf3581"
+    "exec-086d6c629a6bf3581"
 ]
 ```
 
