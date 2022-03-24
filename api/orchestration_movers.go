@@ -531,40 +531,45 @@ func (o *datasyncOrchestrator) datamoverRunDescribe(ctx context.Context, group, 
 
 // startTaskRun starts the execution for a given task
 func (o *datasyncOrchestrator) startTaskRun(ctx context.Context, group, name string) (string, error) {
-
 	task, _, err := o.taskDetailsFromName(ctx, group, name)
 	if err != nil {
 		return "", err
 	}
+
 	if aws.StringValue(task.Status) == "AVAILABLE" {
 		out, err := o.datasyncClient.StartTaskExecution(ctx, aws.StringValue(task.TaskArn))
 		if err != nil {
 			return "", err
 		}
 
-		arn := out.TaskExecutionArn
-		parts := strings.Split(*arn, "/")
+		if out.TaskExecutionArn == nil {
+			return "", apierror.New(apierror.ErrInternalError, "unable to get task execution id", nil)
+		}
+
+		parts := strings.Split(*out.TaskExecutionArn, "/")
 		id := parts[len(parts)-1]
 
 		return id, nil
 	}
+
 	return "", apierror.New(apierror.ErrConflict, "another datasync mover task is already running", nil)
 }
 
 // stopTaskRun starts the execution for a given task
 func (o *datasyncOrchestrator) stopTaskRun(ctx context.Context, group, name string) error {
-
 	task, _, err := o.taskDetailsFromName(ctx, group, name)
 	if err != nil {
 		return err
 	}
+
 	if aws.StringValue(task.Status) == "RUNNING" {
 		err := o.datasyncClient.StopTaskExecution(ctx, aws.StringValue(task.CurrentTaskExecutionArn))
 		if err != nil {
 			return err
 		}
-		return nil
 
+		return nil
 	}
+
 	return apierror.New(apierror.ErrConflict, "datasync mover task is not running", nil)
 }

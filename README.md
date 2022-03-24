@@ -12,10 +12,10 @@ GET /v1/test/metrics
 GET    /v1/datasync/{account}/movers
 POST   /v1/datasync/{account}/movers/{group}
 GET    /v1/datasync/{account}/movers/{group}
+PUT    /v1/datasync/{account}/movers/{group}/{name}
 DELETE /v1/datasync/{account}/movers/{group}/{id}
-POST   /v1/datasync/{account}/movers/{group}/{name}/{start}
-GET	   /v1/datasync/{account}/movers/{group}/{name}/{runs}
-GET	   /v1/datasync/{account}/movers/{group}/{name}/runs/{id}
+GET    /v1/datasync/{account}/movers/{group}/{name}/runs
+GET    /v1/datasync/{account}/movers/{group}/{name}/runs/{id}
 ```
 
 ## Authentication
@@ -240,6 +240,33 @@ GET `/v1/datasync/{account}/movers/{group}/{name}`
 }
 ```
 
+### Start/Stop a Data Mover Task
+
+PUT `/v1/datasync/{account}/movers/{group}/{name}`
+
+| Response Code                 | Definition                      |
+| ----------------------------- | --------------------------------|
+| **200 OK**                    | starting data mover task        |
+| **204 No Content**            | stopping data mover task        |
+| **400 Bad Request**           | badly formed request            |
+| **404 Not Found**             | account not found               |
+| **409 Conflict**              | task already started or stopped |
+| **500 Internal Server Error** | a server error occurred         |
+
+#### Example start request
+
+```json
+{
+    "State": "start"
+}
+```
+
+#### Example start response
+
+```json
+    "exec-086d6c629a6bf3581"
+```
+
 ### Delete Data Mover
 
 DELETE `/v1/datasync/{account}/movers/{group}/{name}`
@@ -251,24 +278,6 @@ DELETE `/v1/datasync/{account}/movers/{group}/{name}`
 | **404 Not Found**             | account not found               |
 | **500 Internal Server Error** | a server error occurred         |
 
-### Run/Stop a Data Mover Task
-
-PUT `/v1/datasync/{account}/movers/{group}/{name}`
-
-| Response Code                 | Definition                      |
-| ----------------------------- | --------------------------------|
-| **200 OK**                    | start the data mover            |
-| **400 Bad Request**           | badly formed request            |
-| **404 Not Found**             | account not found               |
-| **500 Internal Server Error** | a server error occurred         |
-
-#### Example list response
-
-```json
-[
-    "exec-086d6c629a6bf3581"
-]
-```
 
 ### List All Data Mover Runs
 
@@ -286,13 +295,9 @@ GET `/v1/datasync/{account}/movers/{group}/{name}/runs`
 ```json
 [
     "exec-0816cd98c4791fb39",
-
     "exec-00d17529fe536568f",
-
     "exec-0cd145fd8fd6c751d",
-
     "exec-0668badbcf3ba3f1b",
-
     "exec-086d6c629a6bf3581"
 ]
 ```
@@ -332,6 +337,8 @@ GET `/v1/datasync/{account}/movers/{group}/{name}/runs/{id}`
     }
 }
 ```
+
+
 ## License
 
 GNU Affero General Public License v3.0 (GNU AGPLv3)  
