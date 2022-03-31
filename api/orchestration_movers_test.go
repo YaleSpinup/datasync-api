@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/YaleSpinup/apierror"
 	yiam "github.com/YaleSpinup/aws-go/services/iam"
 	yresourcegroupstaggingapi "github.com/YaleSpinup/aws-go/services/resourcegroupstaggingapi"
 	ydatasync "github.com/YaleSpinup/datasync-api/datasync"
@@ -14,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/datasync/datasynciface"
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi"
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi/resourcegroupstaggingapiiface"
-	"github.com/stretchr/testify/assert"
 )
 
 type mockDatasync struct {
@@ -41,6 +41,16 @@ func (d *mockDatasync) StartTaskExecutionWithContext(ctx context.Context, input 
 	return out, nil
 }
 
+// We dont want to start task so we mocked it
+func (d *mockDatasync) CancelTaskExecutionWithContext(ctx context.Context, input *datasync.CancelTaskExecutionInput, opts ...request.Option) (*datasync.CancelTaskExecutionOutput, error) {
+	if d.err != nil {
+		return nil, d.err
+	}
+	out := &datasync.CancelTaskExecutionOutput{}
+
+	return out, nil
+}
+
 var is_running = false
 
 // It returns a task with RUNNING / AVAIABLE bases on is_running
@@ -48,9 +58,10 @@ func (d *mockDatasync) DescribeTaskWithContext(ctx context.Context, input *datas
 	if is_running {
 
 		return &datasync.DescribeTaskOutput{
-			Name:    aws.String("name1"),
-			Status:  aws.String("RUNNING"),
-			TaskArn: aws.String("arn:aws:datasync:us-east-1:012345678901:task/task-05cd6f77d7b5d15ac/execution/exec-086d6c629a6bf3581"),
+			Name:                    aws.String("name1"),
+			Status:                  aws.String("RUNNING"),
+			TaskArn:                 aws.String("arn:aws:datasync:us-east-1:012345678901:task/task-05cd6f77d7b5d15ac/execution/exec-086d6c629a6bf3581"),
+			CurrentTaskExecutionArn: aws.String("arn:aws:datasync:us-east-1:012345678901:task/task-05cd6f77d7b5d15ac/execution/exec-086d6c629a6bf3581"),
 		}, nil
 	}
 	return &datasync.DescribeTaskOutput{
@@ -89,8 +100,29 @@ func newmockrgClient(t *testing.T, err error) resourcegroupstaggingapiiface.Reso
 	}
 }
 
-func Test_StartRunRunsWhenStatusAvailable(t *testing.T) {
-	is_running = false
+func Test_startTaskRun(t *testing.T) {
+	type TaskRunRes struct {
+		res string
+		err error
+	}
+
+	cases := []struct {
+		isNegative bool
+		ctx        context.Context
+		group      string
+		name       string
+		isRunning  bool
+		expected   TaskRunRes
+		message    string
+	}{
+		{false, nil, "Group1", "name1", false,
+			TaskRunRes{"exec-086d6c629a6bf3581", nil}, "StartTask Positive."},
+		{true, nil, "Group1", "name1", true,
+			TaskRunRes{"", apierror.New(apierror.ErrConflict, "", nil)}, "StartTask Negative"},
+		{true, nil, "", "", true,
+			TaskRunRes{"", apierror.New(apierror.ErrConflict, "", nil)}, "StartTask Negative Without Name and group"},
+	}
+
 	o := &datasyncOrchestrator{
 		account: "",
 		server:  &server{},
@@ -104,13 +136,43 @@ func Test_StartRunRunsWhenStatusAvailable(t *testing.T) {
 			Service: newmockrgClient(t, nil),
 		},
 	}
-	resp, err := o.startTaskRun(nil, "group1", "name1")
-	assert.NoError(t, err, "no error")
-	assert.Equal(t, "exec-086d6c629a6bf3581", resp)
+
+	for _, test := range cases {
+		t.Log(test.message)
+		is_running = test.isRunning
+		resp, err := o.startTaskRun(test.ctx, test.group, test.name)
+		if test.isNegative {
+			if err == nil {
+				t.Error("expected error , got no error")
+			}
+
+		} else {
+			if err != nil {
+				t.Errorf("expected err nil, got: %v", err)
+			}
+		}
+		if resp != test.expected.res {
+			t.Errorf("expected resp %v, got: %v", test.expected.res, resp)
+		}
+	}
 }
 
-func Test_StartRunDoseNotRunIfitsrunning(t *testing.T) {
-	is_running = true
+func Test_stopTaskRun(t *testing.T) {
+
+	cases := []struct {
+		isNegative bool
+		ctx        context.Context
+		group      string
+		name       string
+		isRunning  bool
+		expected   error
+		message    string
+	}{
+		{false, nil, "Group1", "name1", true, nil, "StopTask Positive."},
+		{true, nil, "Group1", "name1", false, apierror.New(apierror.ErrConflict, "", nil), "StopTask Negative"},
+		{true, nil, "", "", true, apierror.New(apierror.ErrConflict, "", nil), "StopTask Negative Without Name and group"},
+	}
+
 	o := &datasyncOrchestrator{
 		account: "",
 		server:  &server{},
@@ -124,26 +186,20 @@ func Test_StartRunDoseNotRunIfitsrunning(t *testing.T) {
 			Service: newmockrgClient(t, nil),
 		},
 	}
-	resp, err := o.startTaskRun(nil, "group1", "name1")
-	assert.Error(t, err, "Conflict: another datasync mover task is already running")
-	assert.Equal(t, "", resp)
-}
-func Test_StartRunFailsWithoutgroupAndName(t *testing.T) {
-	is_running = false
-	o := &datasyncOrchestrator{
-		account: "",
-		server:  &server{},
-		sp:      &sessionParams{},
-		datasyncClient: ydatasync.Datasync{
-			Service:         newmockDatasync(t, nil),
-			DefaultKMSKeyId: "",
-		},
-		iamClient: yiam.IAM{},
-		rgClient: yresourcegroupstaggingapi.ResourceGroupsTaggingAPI{
-			Service: newmockrgClient(t, nil),
-		},
+
+	for _, test := range cases {
+		t.Log(test.message)
+		is_running = test.isRunning
+		err := o.stopTaskRun(test.ctx, test.group, test.name)
+		if test.isNegative {
+			if err == nil {
+				t.Error("expected error , got no error")
+			}
+
+		} else {
+			if err != nil {
+				t.Errorf("expected err nil, got: %v", err)
+			}
+		}
 	}
-	resp, err := o.startTaskRun(nil, "", "")
-	assert.Error(t, err, "BadRequest: invalid input")
-	assert.Equal(t, "", resp)
 }
