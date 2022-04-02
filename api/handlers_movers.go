@@ -48,6 +48,11 @@ func (s *server) MoverCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(*req.Name) > 40 {
+		handleError(w, apierror.New(apierror.ErrBadRequest, "Name cannot exceed 40 characters ", nil))
+		return
+	}
+
 	regexName := "^[a-zA-Z0-9-]+$"
 	re := regexp.MustCompile(regexName)
 	if !re.MatchString(*req.Name) {

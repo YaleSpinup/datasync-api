@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"hash/crc32"
 	"strings"
 	"time"
 
@@ -302,7 +303,8 @@ func (o *datasyncOrchestrator) createDatasyncLocation(ctx context.Context, mover
 		// we need to generate that first, before creating the location
 
 		path := fmt.Sprintf("/spinup/%s/%s/", o.server.org, group)
-		roleName := fmt.Sprintf("%s-%s", mover, s3Arn.Resource)
+		// use an 8-char CRC32 hash based on the bucket name to limit the length of the role name
+		roleName := fmt.Sprintf("%s-%08x", mover, crc32.ChecksumIEEE([]byte(s3Arn.Resource)))
 
 		roleARN, err := o.bucketAccessRole(ctx, path, roleName, s3Arn.String(), tags)
 		if err != nil {
