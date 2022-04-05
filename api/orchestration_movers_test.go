@@ -2,8 +2,8 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"testing"
+	"time"
 
 	"github.com/YaleSpinup/apierror"
 	yiam "github.com/YaleSpinup/aws-go/services/iam"
@@ -15,22 +15,23 @@ import (
 	"github.com/aws/aws-sdk-go/service/datasync/datasynciface"
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi"
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi/resourcegroupstaggingapiiface"
+	"github.com/stretchr/testify/assert"
 )
 
-type mockDatasync struct {
+type mockDataSync struct {
 	datasynciface.DataSyncAPI
 	t   *testing.T
 	err error
 }
 
-type mockrgClient struct {
+type mockRGClient struct {
 	resourcegroupstaggingapiiface.ResourceGroupsTaggingAPIAPI
 	t   *testing.T
 	err error
 }
 
 // We dont want to start task so we mocked it
-func (d *mockDatasync) StartTaskExecutionWithContext(ctx context.Context, input *datasync.StartTaskExecutionInput, opts ...request.Option) (*datasync.StartTaskExecutionOutput, error) {
+func (d *mockDataSync) StartTaskExecutionWithContext(ctx context.Context, input *datasync.StartTaskExecutionInput, opts ...request.Option) (*datasync.StartTaskExecutionOutput, error) {
 	if d.err != nil {
 		return nil, d.err
 	}
@@ -42,7 +43,7 @@ func (d *mockDatasync) StartTaskExecutionWithContext(ctx context.Context, input 
 }
 
 // We dont want to start task so we mocked it
-func (d *mockDatasync) CancelTaskExecutionWithContext(ctx context.Context, input *datasync.CancelTaskExecutionInput, opts ...request.Option) (*datasync.CancelTaskExecutionOutput, error) {
+func (d *mockDataSync) CancelTaskExecutionWithContext(ctx context.Context, input *datasync.CancelTaskExecutionInput, opts ...request.Option) (*datasync.CancelTaskExecutionOutput, error) {
 	if d.err != nil {
 		return nil, d.err
 	}
@@ -53,8 +54,45 @@ func (d *mockDatasync) CancelTaskExecutionWithContext(ctx context.Context, input
 
 var is_running = false
 
+func (d *mockDataSync) ListTaskExecutionsPagesWithContext(ctx context.Context, input *datasync.ListTaskExecutionsInput, callback func(*datasync.ListTaskExecutionsOutput, bool) bool, opts ...request.Option) error {
+
+	out := &datasync.ListTaskExecutionsOutput{
+		TaskExecutions: []*datasync.TaskExecutionListEntry{
+			{TaskExecutionArn: aws.String("arn:aws:datasync:us-east-1:012345678901:task/task-05cd6f77d7b5d15ac/execution/exec-086d6c629a6bf3581")},
+			{TaskExecutionArn: aws.String("arn:aws:datasync:us-east-1:012345678901:task/task-05cd6f77d7b5d15ac/execution/exec-086d6c629a6bf3582")},
+			{TaskExecutionArn: aws.String("arn:aws:datasync:us-east-1:012345678901:task/task-05cd6f77d7b5d15ac/execution/exec-086d6c629a6bf3583")},
+			{TaskExecutionArn: aws.String("arn:aws:datasync:us-east-1:012345678901:task/task-05cd6f77d7b5d15ac/execution/exec-086d6c629a6bf3584")},
+			{TaskExecutionArn: aws.String("arn:aws:datasync:us-east-1:012345678901:task/task-05cd6f77d7b5d15ac/execution/exec-086d6c629a6bf3585")},
+		},
+	}
+
+	callback(out, false)
+	return nil
+
+}
+
+func (d *mockDataSync) DescribeTaskExecutionWithContext(ctx context.Context, input *datasync.DescribeTaskExecutionInput, opts ...request.Option) (*datasync.DescribeTaskExecutionOutput, error) {
+
+	var ret = &datasync.DescribeTaskExecutionOutput{
+		BytesTransferred:         aws.Int64(100),
+		BytesWritten:             aws.Int64(100),
+		EstimatedBytesToTransfer: aws.Int64(100),
+		EstimatedFilesToTransfer: aws.Int64(100),
+		Excludes:                 []*datasync.FilterRule{},
+		FilesTransferred:         aws.Int64(100),
+		Includes:                 []*datasync.FilterRule{},
+		Options:                  &datasync.Options{},
+		Result:                   &datasync.TaskExecutionResultDetail{},
+		StartTime:                aws.Time(time.Now()),
+		Status:                   aws.String("RUNNING"),
+		TaskExecutionArn:         aws.String("arn:aws:datasync:us-east-1:012345678901:task/task-05cd6f77d7b5d15ac/execution/exec-086d6c629a6bf3585"),
+	}
+	return ret, nil
+
+}
+
 // It returns a task with RUNNING / AVAIABLE bases on is_running
-func (d *mockDatasync) DescribeTaskWithContext(ctx context.Context, input *datasync.DescribeTaskInput, opts ...request.Option) (*datasync.DescribeTaskOutput, error) {
+func (d *mockDataSync) DescribeTaskWithContext(ctx context.Context, input *datasync.DescribeTaskInput, opts ...request.Option) (*datasync.DescribeTaskOutput, error) {
 	if is_running {
 
 		return &datasync.DescribeTaskOutput{
@@ -72,8 +110,7 @@ func (d *mockDatasync) DescribeTaskWithContext(ctx context.Context, input *datas
 }
 
 //Get tags
-func (r *mockrgClient) GetResourcesWithContext(ctx context.Context, input *resourcegroupstaggingapi.GetResourcesInput, opts ...request.Option) (*resourcegroupstaggingapi.GetResourcesOutput, error) {
-	fmt.Print(ctx, input, opts)
+func (r *mockRGClient) GetResourcesWithContext(ctx context.Context, input *resourcegroupstaggingapi.GetResourcesInput, opts ...request.Option) (*resourcegroupstaggingapi.GetResourcesOutput, error) {
 	return &resourcegroupstaggingapi.GetResourcesOutput{
 		PaginationToken: new(string),
 		ResourceTagMappingList: []*resourcegroupstaggingapi.ResourceTagMapping{
@@ -86,21 +123,21 @@ func (r *mockrgClient) GetResourcesWithContext(ctx context.Context, input *resou
 	}, nil
 }
 
-func newmockDatasync(t *testing.T, err error) datasynciface.DataSyncAPI {
-	return &mockDatasync{
+func newMockDataSync(t *testing.T, err error) datasynciface.DataSyncAPI {
+	return &mockDataSync{
 		t:   t,
 		err: err,
 	}
 }
 
-func newmockrgClient(t *testing.T, err error) resourcegroupstaggingapiiface.ResourceGroupsTaggingAPIAPI {
-	return &mockrgClient{
+func newMockRGClient(t *testing.T, err error) resourcegroupstaggingapiiface.ResourceGroupsTaggingAPIAPI {
+	return &mockRGClient{
 		t:   t,
 		err: err,
 	}
 }
 
-func Test_startTaskRun(t *testing.T) {
+func TestStartTaskRun(t *testing.T) {
 	type TaskRunRes struct {
 		res string
 		err error
@@ -128,12 +165,12 @@ func Test_startTaskRun(t *testing.T) {
 		server:  &server{},
 		sp:      &sessionParams{},
 		datasyncClient: ydatasync.Datasync{
-			Service:         newmockDatasync(t, nil),
+			Service:         newMockDataSync(t, nil),
 			DefaultKMSKeyId: "",
 		},
 		iamClient: yiam.IAM{},
 		rgClient: yresourcegroupstaggingapi.ResourceGroupsTaggingAPI{
-			Service: newmockrgClient(t, nil),
+			Service: newMockRGClient(t, nil),
 		},
 	}
 
@@ -178,12 +215,12 @@ func Test_stopTaskRun(t *testing.T) {
 		server:  &server{},
 		sp:      &sessionParams{},
 		datasyncClient: ydatasync.Datasync{
-			Service:         newmockDatasync(t, nil),
+			Service:         newMockDataSync(t, nil),
 			DefaultKMSKeyId: "",
 		},
 		iamClient: yiam.IAM{},
 		rgClient: yresourcegroupstaggingapi.ResourceGroupsTaggingAPI{
-			Service: newmockrgClient(t, nil),
+			Service: newMockRGClient(t, nil),
 		},
 	}
 
@@ -201,5 +238,62 @@ func Test_stopTaskRun(t *testing.T) {
 				t.Errorf("expected err nil, got: %v", err)
 			}
 		}
+	}
+}
+
+func TestGetRunListById(t *testing.T) {
+
+	run := &DatamoverRun{
+		BytesTransferred:         aws.Int64(100),
+		BytesWritten:             aws.Int64(100),
+		EstimatedBytesToTransfer: aws.Int64(100),
+		EstimatedFilesToTransfer: aws.Int64(100),
+		FilesTransferred:         aws.Int64(100),
+		Status:                   aws.String("RUNNING"),
+		Result:                   &datasync.TaskExecutionResultDetail{},
+	}
+
+	type input struct {
+		group string
+		name  string
+		id    string
+	}
+	type output struct {
+		isErr bool
+		run   *DatamoverRun
+	}
+	tests := []struct {
+		name  string
+		input input
+		exp   output
+	}{
+		{"group empty", input{"", "name1", "1234"}, output{true, nil}},
+		{"name empty", input{"group1", "", "1234"}, output{true, nil}},
+		{"valid test", input{"group1", "name1", "1234"}, output{false, run}},
+	}
+
+	o := &datasyncOrchestrator{
+		account:        "",
+		server:         &server{},
+		sp:             &sessionParams{},
+		datasyncClient: ydatasync.Datasync{Service: newMockDataSync(t, nil)},
+		rgClient: yresourcegroupstaggingapi.ResourceGroupsTaggingAPI{
+			Service: newMockRGClient(t, nil),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			got, err := o.datamoverRunDescribe(ctx, tt.input.group, tt.input.name, tt.input.id)
+			gotErr := err != nil
+			if tt.exp.isErr != gotErr {
+				t.Error(tt.name, " expected error but did not receive error", err)
+			}
+			if got != nil {
+				got.StartTime = nil
+			}
+			assert.Equal(t, tt.exp.run, got)
+		})
 	}
 }
