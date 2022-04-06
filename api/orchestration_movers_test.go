@@ -71,6 +71,8 @@ func (d *mockDataSync) ListTaskExecutionsPagesWithContext(ctx context.Context, i
 
 }
 
+var testTime = time.Date(2020, 10, 10, 10, 10, 10, 0, time.UTC)
+
 func (d *mockDataSync) DescribeTaskExecutionWithContext(ctx context.Context, input *datasync.DescribeTaskExecutionInput, opts ...request.Option) (*datasync.DescribeTaskExecutionOutput, error) {
 
 	var ret = &datasync.DescribeTaskExecutionOutput{
@@ -83,7 +85,7 @@ func (d *mockDataSync) DescribeTaskExecutionWithContext(ctx context.Context, inp
 		Includes:                 []*datasync.FilterRule{},
 		Options:                  &datasync.Options{},
 		Result:                   &datasync.TaskExecutionResultDetail{},
-		StartTime:                aws.Time(time.Now()),
+		StartTime:                aws.Time(testTime),
 		Status:                   aws.String("RUNNING"),
 		TaskExecutionArn:         aws.String("arn:aws:datasync:us-east-1:012345678901:task/task-05cd6f77d7b5d15ac/execution/exec-086d6c629a6bf3585"),
 	}
@@ -251,6 +253,7 @@ func TestGetRunListById(t *testing.T) {
 		FilesTransferred:         aws.Int64(100),
 		Status:                   aws.String("RUNNING"),
 		Result:                   &datasync.TaskExecutionResultDetail{},
+		StartTime:                aws.Time(testTime),
 	}
 
 	type input struct {
@@ -269,6 +272,7 @@ func TestGetRunListById(t *testing.T) {
 	}{
 		{"group empty", input{"", "name1", "1234"}, output{true, nil}},
 		{"name empty", input{"group1", "", "1234"}, output{true, nil}},
+		{"id empty", input{"group1", "name1", ""}, output{true, nil}},
 		{"valid test", input{"group1", "name1", "1234"}, output{false, run}},
 	}
 
@@ -289,9 +293,6 @@ func TestGetRunListById(t *testing.T) {
 			gotErr := err != nil
 			if tt.exp.isErr != gotErr {
 				t.Error(tt.name, " expected error but did not receive error", err)
-			}
-			if got != nil {
-				got.StartTime = nil
 			}
 			assert.Equal(t, tt.exp.run, got)
 		})
