@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/YaleSpinup/apierror"
-	yiam "github.com/YaleSpinup/aws-go/services/iam"
 	yresourcegroupstaggingapi "github.com/YaleSpinup/aws-go/services/resourcegroupstaggingapi"
 	ydatasync "github.com/YaleSpinup/datasync-api/datasync"
 	"github.com/aws/aws-sdk-go/aws"
@@ -139,6 +138,19 @@ func newMockRGClient(t *testing.T, err error) resourcegroupstaggingapiiface.Reso
 	}
 }
 
+func newMockDataSyncOrchestrator(t *testing.T) *datasyncOrchestrator {
+	return &datasyncOrchestrator{
+		server: &server{},
+		sp:     &sessionParams{},
+		datasyncClient: ydatasync.Datasync{
+			Service: newMockDataSync(t, nil),
+		},
+		rgClient: yresourcegroupstaggingapi.ResourceGroupsTaggingAPI{
+			Service: newMockRGClient(t, nil),
+		},
+	}
+}
+
 func TestStartTaskRun(t *testing.T) {
 	type TaskRunRes struct {
 		res string
@@ -162,20 +174,7 @@ func TestStartTaskRun(t *testing.T) {
 			TaskRunRes{"", apierror.New(apierror.ErrConflict, "", nil)}, "StartTask Negative Without Name and group"},
 	}
 
-	o := &datasyncOrchestrator{
-		account: "",
-		server:  &server{},
-		sp:      &sessionParams{},
-		datasyncClient: ydatasync.Datasync{
-			Service:         newMockDataSync(t, nil),
-			DefaultKMSKeyId: "",
-		},
-		iamClient: yiam.IAM{},
-		rgClient: yresourcegroupstaggingapi.ResourceGroupsTaggingAPI{
-			Service: newMockRGClient(t, nil),
-		},
-	}
-
+	o := newMockDataSyncOrchestrator(t)
 	for _, test := range cases {
 		t.Log(test.message)
 		is_running = test.isRunning
@@ -212,19 +211,7 @@ func Test_stopTaskRun(t *testing.T) {
 		{true, nil, "", "", true, apierror.New(apierror.ErrConflict, "", nil), "StopTask Negative Without Name and group"},
 	}
 
-	o := &datasyncOrchestrator{
-		account: "",
-		server:  &server{},
-		sp:      &sessionParams{},
-		datasyncClient: ydatasync.Datasync{
-			Service:         newMockDataSync(t, nil),
-			DefaultKMSKeyId: "",
-		},
-		iamClient: yiam.IAM{},
-		rgClient: yresourcegroupstaggingapi.ResourceGroupsTaggingAPI{
-			Service: newMockRGClient(t, nil),
-		},
-	}
+	o := newMockDataSyncOrchestrator(t)
 
 	for _, test := range cases {
 		t.Log(test.message)
@@ -276,25 +263,87 @@ func TestGetRunListById(t *testing.T) {
 		{"valid test", input{"group1", "name1", "1234"}, output{false, run}},
 	}
 
-	o := &datasyncOrchestrator{
-		account:        "",
-		server:         &server{},
-		sp:             &sessionParams{},
-		datasyncClient: ydatasync.Datasync{Service: newMockDataSync(t, nil)},
-		rgClient: yresourcegroupstaggingapi.ResourceGroupsTaggingAPI{
-			Service: newMockRGClient(t, nil),
-		},
-	}
+	o := newMockDataSyncOrchestrator(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			got, err := o.datamoverRunDescribe(ctx, tt.input.group, tt.input.name, tt.input.id)
-			gotErr := err != nil
-			if tt.exp.isErr != gotErr {
-				t.Error(tt.name, " expected error but did not receive error", err)
+			if tt.exp.isErr && err == nil {
+				t.Error("expected error but did not receive error")
+			} else if !tt.exp.isErr && err != nil {
+				t.Errorf("received unexpected error %v", err)
 			}
 			assert.Equal(t, tt.exp.run, got)
+		})
+	}
+}
+
+func TestGetRunList(t *testing.T) {
+	validCaseRes := []string{"exec-086d6c629a6bf3581", "exec-086d6c629a6bf3582", "exec-086d6c629a6bf3583", "exec-086d6c629a6bf3584", "exec-086d6c629a6bf3585"}
+	type input struct {
+		group string
+		name  string
+	}
+	type output struct {
+		isErr bool
+		res   []string
+	}
+	tests := []struct {
+		name  string
+		input input
+		exp   output
+	}{
+		{"group empty", input{"", "name1"}, output{true, nil}},
+		{"name empty", input{"group1", ""}, output{true, nil}},
+		{"valid test", input{"group1", "name1"}, output{false, validCaseRes}},
+	}
+
+	o := newMockDataSyncOrchestrator(t)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			got, err := o.datamoverRunList(ctx, tt.input.group, tt.input.name)
+			if tt.exp.isErr && err == nil {
+				t.Error("expected error but did not receive error")
+			} else if !tt.exp.isErr && err != nil {
+				t.Errorf("received unexpected error %v", err)
+			}
+			assert.Equal(t, tt.exp.res, got)
+		})
+	}
+}
+
+func TestGetMoversList(t *testing.T) {
+	type input struct {
+		group string
+	}
+	type output struct {
+		isErr bool
+		res   []string
+	}
+	tests := []struct {
+		name  string
+		input input
+		exp   output
+	}{
+		{"empty group", input{""}, output{false, []string{"name1"}}},
+		{"non empty group", input{"group1"}, output{false, []string{"name1"}}},
+	}
+
+	o := newMockDataSyncOrchestrator(t)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			got, err := o.datamoverList(ctx, tt.input.group)
+			if tt.exp.isErr && err == nil {
+				t.Error("expected error but did not receive error")
+			} else if !tt.exp.isErr && err != nil {
+				t.Errorf("received unexpected error %v", err)
+			}
+			assert.Equal(t, tt.exp.res, got)
 		})
 	}
 }
