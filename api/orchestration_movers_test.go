@@ -230,7 +230,7 @@ func Test_stopTaskRun(t *testing.T) {
 	}
 }
 
-func TestGetRunListById(t *testing.T) {
+func Test_datamoverRunDescribe(t *testing.T) {
 
 	run := &DatamoverRun{
 		BytesTransferred:         aws.Int64(100),
@@ -279,7 +279,7 @@ func TestGetRunListById(t *testing.T) {
 	}
 }
 
-func TestGetRunList(t *testing.T) {
+func Test_datamoverRunList(t *testing.T) {
 	validCaseRes := []string{"exec-086d6c629a6bf3581", "exec-086d6c629a6bf3582", "exec-086d6c629a6bf3583", "exec-086d6c629a6bf3584", "exec-086d6c629a6bf3585"}
 	type input struct {
 		group string
@@ -315,7 +315,7 @@ func TestGetRunList(t *testing.T) {
 	}
 }
 
-func TestGetMoversList(t *testing.T) {
+func Test_datamoverList(t *testing.T) {
 	type input struct {
 		group string
 	}
