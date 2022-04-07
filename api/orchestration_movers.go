@@ -512,6 +512,9 @@ func (o *datasyncOrchestrator) datamoverRunDescribe(ctx context.Context, group, 
 		return nil, err
 	}
 
+	if id == "" {
+		return nil, apierror.New(apierror.ErrBadRequest, "invalid input, id is missing", nil)
+	}
 	execArn := fmt.Sprintf("%s/execution/%s", aws.StringValue(task.TaskArn), id)
 
 	exec, err := o.datasyncClient.DescribeTaskExecution(ctx, execArn)
