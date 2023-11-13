@@ -3,7 +3,7 @@ module github.com/YaleSpinup/datasync-api
 go 1.18
 
 require (
-	github.com/YaleSpinup/apierror v0.1.0
+	github.com/YaleSpinup/apierror v0.1.5
 	github.com/YaleSpinup/aws-go v0.2.0
 	github.com/YaleSpinup/flywheel v0.3.0
 	github.com/aws/aws-sdk-go v1.44.98
