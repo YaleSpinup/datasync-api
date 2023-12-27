@@ -4,8 +4,8 @@ github.com/YaleSpinup/aws-go v0.2.5 h1:FkTCxw2lWKU2x5PUmPq/v+1R9jaekR9LhkuilbNnX
 github.com/YaleSpinup/aws-go v0.2.5/go.mod h1:ICZ44nNZzu0ii+UdiC0T4/8+mxROh+UjWztl1SCoXlI=
 github.com/YaleSpinup/flywheel v0.3.6 h1:TjG3RSh+0rI83beetP2H7H5NTlnxwUismgv541imhjc=
 github.com/YaleSpinup/flywheel v0.3.6/go.mod h1:9Qo7aa1Wn+e4bSwzIOZyV25Y8fKUpFu4Bx0fA7henRU=
-github.com/aws/aws-sdk-go v1.47.10 h1:cvufN7WkD1nlOgpRopsmxKQlFp5X1MfyAw4r7BBORQc=
-github.com/aws/aws-sdk-go v1.47.10/go.mod h1:LF8svs817+Nz+DmiMQKTO3ubZ/6IaTpq3TjupRn3Eqk=
+github.com/aws/aws-sdk-go v1.49.10 h1:xcTIazQPKoQWmegkQu5C7oPDgXwGaN7/E9y6TGmxNUE=
+github.com/aws/aws-sdk-go v1.49.10/go.mod h1:LF8svs817+Nz+DmiMQKTO3ubZ/6IaTpq3TjupRn3Eqk=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
